@@ -1,0 +1,590 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================================
+// ENUMERACIONES DEL SISTEMA
+// =========================================================================
+
+enum UserRole {
+  SUPERADMIN
+  CONCURSO_ADMIN
+  REGISTRADOR
+}
+
+enum SubscriptionStatus {
+  ACTIVO
+  EXPIRADO
+  SUSPENDIDO
+  CANCELADO
+}
+
+enum SubscriptionPlan {
+  BASICO
+  PROFESIONAL
+  EMPRESARIAL
+}
+
+/// Sexo del ganado
+enum SexoGanado {
+  MACHO                // Ganado macho
+  HEMBRA               // Ganado hembra
+  SIN_RESTRICCION      // Para categorías sin restricción de sexo
+}
+ 
+/// Estados de concurso
+enum EstadoConcurso {
+  BORRADOR             // En preparación
+  INSCRIPCIONES_ABIERTAS // Aceptando inscripciones
+  INSCRIPCIONES_CERRADAS // Inscripciones cerradas
+  EN_EVALUACION        // En proceso de calificación
+  FINALIZADO           // Concurso terminado
+}
+
+/// Tipo de concurso
+enum TipoConcurso {
+  GANADO               // Concurso de ganado
+  PRODUCTO             // Concurso de productos (café, lácteos, etc.)
+  MIXTO                // Concurso que acepta ambos
+}
+
+/// Tipo de evento
+enum TipoEvento {
+  CONFERENCIA
+  TALLER
+  FERIA
+  EXPOSICION
+  NETWORKING
+  PREMIACION
+}
+
+// =========================================================================
+// MODELOS PRINCIPALES
+// =========================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  apellido  String
+  telefono  String?
+  role      UserRole @default(REGISTRADOR)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  concursosCreados     Concurso[]              @relation("ConcursoCreator")
+  participantes        Participante[]
+  concursoRegistradores ConcursoRegistrador[]
+  reviews              Review[]
+  orders               Order[]
+  wishlist             Wishlist[]
+  cart                 CartItem[]
+  contacts             Contact[]
+  events               Event[]
+
+  @@map("users")
+}
+
+model Company {
+  id          String             @id @default(cuid())
+  nombre      String
+  slug        String             @unique
+  email       String
+  telefono    String?
+  direccion   String?
+  logo        String?
+  descripcion String?
+  website     String?
+  ubicacion   String?
+  isFeatured  Boolean            @default(false)
+  isPublished Boolean            @default(false)
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Suscripción
+  subscription   Subscription?
+  subscriptionId String?       @unique
+
+  // Relaciones
+  users     User[]
+  concursos Concurso[]
+  contacts  Contact[]
+  events    Event[]
+  products  Product[]
+
+  @@map("companies")
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  companyId         String             @unique
+  company           Company            @relation(fields: [companyId], references: [id])
+  plan              SubscriptionPlan   @default(BASICO)
+  status            SubscriptionStatus @default(ACTIVO)
+  maxConcursos      Int                @default(1)
+  concursosUsados   Int                @default(0)
+  fechaInicio       DateTime           @default(now())
+  fechaExpiracion   DateTime
+  fechaRenovacion   DateTime?
+  precio            Decimal            @db.Decimal(10, 2)
+  notas             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+// =========================================================================
+// MODELO DE CONTACTO EMPRESARIAL
+// =========================================================================
+
+model Contact {
+  id          String   @id @default(cuid())
+  nombre      String
+  apellido    String?
+  cargo       String?
+  telefono    String?
+  email       String?
+  whatsapp    String?
+  linkedin    String?
+  descripcion String?
+  isPrimary   Boolean  @default(false) // Contacto principal
+  isPublic    Boolean  @default(true)  // Visible públicamente
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("contacts")
+}
+
+// =========================================================================
+// MODELO DE EVENTOS
+// =========================================================================
+
+model Event {
+  id          String      @id @default(cuid())
+  titulo      String
+  slug        String      @unique
+  descripcion String?
+  tipo        TipoEvento
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  ubicacion   String?
+  direccion   String?
+  precio      Decimal?    @db.Decimal(10, 2)
+  capacidad   Int?
+  imagen      String?
+  isFeatured  Boolean     @default(false)
+  isPublished Boolean     @default(false)
+  companyId   String
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  concursoId  String?     // Opcional: evento asociado a un concurso
+  concurso    Concurso?   @relation(fields: [concursoId], references: [id])
+  createdById String
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([companyId])
+  @@index([concursoId])
+  @@map("events")
+}
+
+// =========================================================================
+// MODELO DE CONCURSO MEJORADO
+// =========================================================================
+
+model Concurso {
+  id           String          @id @default(cuid())
+  nombre       String
+  slug         String          @unique
+  descripcion  String?
+  tipo         TipoConcurso    @default(GANADO)
+  estado       EstadoConcurso  @default(BORRADOR)
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  fechaInscripcionInicio DateTime?
+  fechaInscripcionFin    DateTime?
+  ubicacion    String?
+  direccion    String?
+  premios      String?
+  reglamento   String?
+  imagen       String?
+  isPublished  Boolean         @default(false)
+  isFeatured   Boolean         @default(false)
+  companyId    String
+  company      Company         @relation(fields: [companyId], references: [id])
+  createdById  String
+  createdBy    User            @relation("ConcursoCreator", fields: [createdById], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relaciones
+  categorias            ConcursoCategoria[]
+  participantes         Participante[]
+  concursoRegistradores ConcursoRegistrador[]
+  events                Event[]
+
+  @@index([companyId])
+  @@map("concursos")
+}
+
+// =========================================================================
+// MODELO DE CATEGORÍA DE CONCURSO (ESPECÍFICA POR CONCURSO)
+// =========================================================================
+
+model ConcursoCategoria {
+  id          String      @id @default(cuid())
+  nombre      String
+  descripcion String?
+  orden       Int         @default(0)
+  sexo        SexoGanado? // Para concursos de ganado
+  edadMinima  Int?        // Edad mínima en días (opcional)
+  edadMaxima  Int?        // Edad máxima en días (opcional)
+  
+  // Para concursos de productos
+  tipoProducto String?    // Ej: "Café Arábica", "Queso Fresco"
+  criterios    String?    // Criterios de evaluación específicos
+  
+  concursoId  String
+  concurso    Concurso    @relation(fields: [concursoId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relaciones
+  participantes Participante[]
+
+  @@index([concursoId])
+  @@map("concurso_categorias")
+}
+
+// =========================================================================
+// MODELO DE EXPOSITOR
+// =========================================================================
+
+model Expositor {
+  id          String   @id @default(cuid())
+  nombre      String
+  apellido    String?
+  empresa     String?
+  telefono    String?
+  email       String?
+  direccion   String?
+  documento   String?  // Cédula o NIT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  ganado       Ganado[]
+  participantes Participante[]
+
+  @@map("expositores")
+}
+
+// =========================================================================
+// MODELO DE GANADO MEJORADO
+// =========================================================================
+
+model Ganado {
+  id           String      @id @default(cuid())
+  nombre       String
+  slug         String      @unique
+  fechaNac     DateTime?
+  categoria    String?     // Campo para compatibilidad
+  subcategoria String?     // Campo para compatibilidad
+  establo      String?
+  remate       Boolean?
+  descripcion  String?
+  raza         String?
+  sexo         SexoGanado
+  numRegistro  String?      
+  puntaje      Int?
+  peso         Decimal?    @db.Decimal(8, 2)
+  isFeatured   Boolean     @default(false)
+  isPublished  Boolean     @default(false)
+  isGanadora   Boolean     @default(false)
+  premios      String[]
+  
+  // Relación con expositor
+  expositorId  String?
+  expositor    Expositor?  @relation(fields: [expositorId], references: [id])
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relaciones
+  GanadoImage   GanadoImage[]
+  participantes Participante[]
+
+  @@index([expositorId])
+  @@map("ganado")
+}
+
+// =========================================================================
+// MODELO DE PRODUCTO MEJORADO PARA CONCURSOS
+// =========================================================================
+
+model Product {
+  id           String      @id @default(cuid())
+  name         String
+  slug         String      @unique
+  description  String?     @db.Text
+  price        Float?      // Opcional para productos de concurso
+  comparePrice Float?
+  images       String[]
+  videos       String[]
+  ingredients  String?     @db.Text
+  
+  // Campos específicos para concursos
+  origen       String?     // Origen del producto
+  proceso      String?     // Proceso de elaboración
+  certificaciones String[] // Certificaciones del producto
+  
+  companyId    String?     // Opcional para productos independientes
+  categoryId   String?     // Categoría general del producto
+  expositorId  String?     // Relación con expositor
+  
+  variants     Variant[]
+  attributes   Attribute[]
+  reviews      Review[]
+  orderItems   OrderItem[]
+  wishlist     Wishlist[]
+  cartItems    CartItem[]
+  participantes Participante[] // Productos que participan en concursos
+  
+  isFeatured   Boolean     @default(false)
+  isPublished  Boolean     @default(false)
+  stock        Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  company   Company?   @relation(fields: [companyId], references: [id])
+  category  Category?  @relation(fields: [categoryId], references: [id])
+  expositor Expositor? @relation(fields: [expositorId], references: [id])
+
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([expositorId])
+  @@map("products")
+}
+
+// =========================================================================
+// MODELO DE PARTICIPANTE MEJORADO
+// =========================================================================
+
+model Participante {
+  id           String    @id @default(cuid())
+  numeroFicha  String
+  
+  // Información del participante/expositor
+  expositorId  String?
+  expositor    Expositor? @relation(fields: [expositorId], references: [id])
+  
+  // Para compatibilidad con sistema anterior
+  propietario  String?
+  telefono     String?
+  email        String?
+  
+  concursoId   String
+  concurso     Concurso  @relation(fields: [concursoId], references: [id])
+  categoriaId  String
+  categoria    ConcursoCategoria @relation(fields: [categoriaId], references: [id])
+  
+  // Relación polimórfica: puede ser ganado o producto
+  ganadoId     String?
+  ganado       Ganado?   @relation(fields: [ganadoId], references: [id])
+  productId    String?
+  product      Product?  @relation(fields: [productId], references: [id])
+  
+  // Información de la participación
+  posicion     Int?      // Posición obtenida
+  puntaje      Float?    // Puntaje obtenido
+  observaciones String?
+  
+  registradoPor String
+  registrador  User      @relation(fields: [registradoPor], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([concursoId, numeroFicha])
+  @@index([expositorId])
+  @@index([ganadoId])
+  @@index([productId])
+  @@map("participantes")
+}
+
+// Nueva tabla para asignar registradores a concursos específicos
+model ConcursoRegistrador {
+  id         String   @id @default(cuid())
+  concursoId String
+  concurso   Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asignedBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([concursoId, userId])
+  @@map("concurso_registradores")
+}
+
+// =========================================================================
+// MODELOS DE IMÁGENES Y MULTIMEDIA
+// =========================================================================
+
+model Image {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  GanadoImage GanadoImage[]
+
+  @@map("images")
+}
+
+model GanadoImage {
+  id        String  @id @default(cuid())
+  ganadoId  String
+  ganado    Ganado  @relation(fields: [ganadoId], references: [id])
+  imageId   String
+  image     Image   @relation(fields: [imageId], references: [id])
+  principal Boolean @default(false)
+
+  @@unique([ganadoId, imageId])
+  @@map("ganado_images")
+}
+
+// =========================================================================
+// MODELOS DE CATEGORÍAS Y PRODUCTOS (E-COMMERCE)
+// =========================================================================
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?      @db.Text
+  image       String?
+  parentId    String?
+  parent      Category?    @relation("SubCategories", fields: [parentId], references: [id])
+  subCategories Category[] @relation("SubCategories")
+  featured    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  Product Product[]
+
+  @@map("categories")
+}
+
+// =========================================================================
+// MODELOS DE E-COMMERCE (MANTENIDOS PARA COMPATIBILIDAD)
+// =========================================================================
+
+model Variant {
+  id        String   @id @default(cuid())
+  name      String
+  value     String
+  price     Float?
+  stock     Int      @default(0)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("variants")
+}
+
+model Attribute {
+  id        String   @id @default(cuid())
+  name      String
+  value     String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("attributes")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  total      Float
+  status     String      @default("pending")
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Float
+  orderId   String
+  productId String
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("wishlist")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  quantity  Int
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
