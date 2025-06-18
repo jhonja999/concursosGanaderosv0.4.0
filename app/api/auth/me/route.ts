@@ -34,8 +34,12 @@ export async function GET(request: NextRequest) {
       nombre: user.nombre,
       apellido: user.apellido,
       email: user.email,
+      telefono: user.telefono,
       role: user.role,
+      isSuperAdmin: user.isSuperAdmin,
+      isActive: user.isActive,
       company: user.company,
+      createdAt: user.createdAt,
     })
   } catch (error) {
     console.error("Error fetching user data:", error)

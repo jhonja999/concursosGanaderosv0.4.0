@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // Buscar usuario
+    // Find user
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -23,13 +23,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
     }
 
-    // Verificar contraseña
+    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password)
     if (!isValidPassword) {
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
     }
 
-    // Crear token JWT
+    // Create JWT token
     const token = signToken({
       userId: user.id,
       companyId: user.companyId,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       expiresAt: user.company?.subscription?.fechaExpiracion?.toISOString() || null,
     })
 
-    // Configurar cookie
+    // Set cookie
     const response = NextResponse.json({
       user: {
         id: user.id,
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         nombre: user.nombre,
         apellido: user.apellido,
         role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
         company: user.company,
       },
     })
@@ -54,12 +55,12 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     })
 
     return response
   } catch (error) {
-    console.error("Error en login:", error)
+    console.error("Error in login:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

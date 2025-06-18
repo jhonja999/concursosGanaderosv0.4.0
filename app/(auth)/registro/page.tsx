@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Logo } from "@/components/shared/logo"
 
 export default function RegistroPage() {
   const [formData, setFormData] = useState({
@@ -96,6 +97,9 @@ export default function RegistroPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <Logo size="md" href="/" />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Crear Cuenta</CardTitle>
           <CardDescription className="text-center">Regístrate para comenzar a gestionar tus concursos</CardDescription>
         </CardHeader>

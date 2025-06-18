@@ -1,11 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -33,32 +31,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Home,
-  Trophy,
-  Users,
-  Settings,
-  LogOut,
-  Crown,
-  BarChart3,
-  Bell,
-  CreditCard,
-  AlertTriangle,
-  Calendar,
-  Phone,
-} from "lucide-react"
+import { Home, Users, Settings, LogOut, CreditCard, AlertTriangle, Bell } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { Logo } from "@/components/shared/logo"
 
 interface User {
   id: string
   nombre: string
   apellido: string
   email: string
+  telefono?: string
   role: string
-  company: {
+  isSuperAdmin: boolean
+  isActive: boolean
+  company?: {
     id: string
     nombre: string
-    subscription: {
+    subscription?: {
       plan: string
       status: string
       maxConcursos: number
@@ -69,6 +58,7 @@ interface User {
   }
 }
 
+// Simplified menu items for core functionality only
 const menuItems = [
   {
     title: "Dashboard",
@@ -76,29 +66,9 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "Concursos",
-    url: "/dashboard/concursos",
-    icon: Trophy,
-  },
-  {
-    title: "Participantes",
-    url: "/dashboard/participantes",
+    title: "Usuarios",
+    url: "/dashboard/usuarios",
     icon: Users,
-  },
-  {
-    title: "Eventos",
-    url: "/dashboard/eventos",
-    icon: Calendar,
-  },
-  {
-    title: "Contactos",
-    url: "/dashboard/contactos",
-    icon: Phone,
-  },
-  {
-    title: "Reportes",
-    url: "/dashboard/reportes",
-    icon: BarChart3,
   },
   {
     title: "Configuración",
@@ -186,11 +156,9 @@ export default function DashboardLayout({
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link href="/dashboard">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-viridian text-sidebar-primary-foreground">
-                    <Crown className="size-4" />
-                  </div>
+                  <Logo variant="compact" size="sm" href={null} />
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user?.company.nombre || "Mi Empresa"}</span>
+                    <span className="truncate font-semibold">{user?.company?.nombre || "Sistema"}</span>
                     <span className="truncate text-xs">
                       {user?.nombre} {user?.apellido}
                     </span>
@@ -220,8 +188,8 @@ export default function DashboardLayout({
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Subscription Info */}
-          {user?.company.subscription && (
+          {/* Subscription Info - Only show if user has company */}
+          {user?.company?.subscription && (
             <SidebarGroup>
               <SidebarGroupLabel>Suscripción</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -263,21 +231,6 @@ export default function DashboardLayout({
                         </div>
                       </div>
                     )}
-
-                    {/* Subscription Actions */}
-                    <div className="flex flex-col gap-2">
-                      <Button size="sm" variant="outline" className="text-xs h-8" asChild>
-                        <Link href="/dashboard/suscripcion">
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          Gestionar Plan
-                        </Link>
-                      </Button>
-                      {user.company.subscription.status !== "ACTIVO" && (
-                        <Button size="sm" className="text-xs h-8 bg-viridian hover:bg-viridian/90" asChild>
-                          <Link href="/dashboard/renovar">Renovar Ahora</Link>
-                        </Button>
-                      )}
-                    </div>
 
                     <div className="text-xs text-muted-foreground">
                       <div>Precio: {formatCurrency(Number(user.company.subscription.precio))}/año</div>
@@ -341,12 +294,14 @@ export default function DashboardLayout({
                       Mi Perfil
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/suscripcion">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Suscripción
-                    </Link>
-                  </DropdownMenuItem>
+                  {user?.company && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/suscripcion">
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Suscripción
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard/notificaciones">
                       <Bell className="mr-2 h-4 w-4" />
@@ -372,8 +327,8 @@ export default function DashboardLayout({
             <SidebarTrigger className="-ml-1" />
             <div className="h-4 w-px bg-sidebar-border" />
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{user?.company.nombre}</span>
-              {user?.company.subscription && (
+              <span className="text-sm font-medium">{user?.company?.nombre || "Sistema"}</span>
+              {user?.company?.subscription && (
                 <>
                   <div className="h-1 w-1 rounded-full bg-sidebar-border" />
                   {getPlanBadge(user.company.subscription.plan)}
