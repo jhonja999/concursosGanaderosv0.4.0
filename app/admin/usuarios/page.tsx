@@ -28,7 +28,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -96,7 +95,7 @@ export default function UsuariosPage() {
 
   const fetchUsers = async () => {
     try {
-      // Simular datos de usuarios
+      // Datos simulados de usuarios
       const mockUsers: User[] = [
         {
           id: "1",
@@ -158,7 +157,7 @@ export default function UsuariosPage() {
 
   const fetchCompanies = async () => {
     try {
-      // Simular datos de compañías
+      // Datos simulados de compañías
       setCompanies([
         { id: "1", nombre: "Ganadera El Progreso" },
         { id: "2", nombre: "Asociación Ganadera Norte" },
@@ -223,7 +222,6 @@ export default function UsuariosPage() {
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      // Aquí iría la llamada a la API para cambiar el estado
       setUsers(users.map(user => 
         user.id === userId ? { ...user, isActive: !currentStatus } : user
       ))
@@ -235,7 +233,6 @@ export default function UsuariosPage() {
   const handleDeleteUser = async (userId: string) => {
     if (confirm("¿Estás seguro de que quieres eliminar este usuario?")) {
       try {
-        // Aquí iría la llamada a la API para eliminar
         setUsers(users.filter(user => user.id !== userId))
       } catch (error) {
         console.error("Error deleting user:", error)
@@ -244,7 +241,6 @@ export default function UsuariosPage() {
   }
 
   const exportUsers = () => {
-    // Implementar exportación de usuarios
     console.log("Exporting users...")
   }
 

@@ -99,7 +99,7 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Simular datos para el dashboard
+      // Datos simulados para el dashboard
       setStats({
         totalUsers: 1247,
         activeUsers: 1156,

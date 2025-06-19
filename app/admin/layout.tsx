@@ -6,7 +6,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import {
   Sidebar,
   SidebarContent,
@@ -42,30 +41,9 @@ import {
   Bell,
   LogOut,
   UserCog,
-  Package,
   AlertTriangle,
-  TrendingUp,
 } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
 import { Logo } from "@/components/shared/logo"
-
-interface User {
-  id: string
-  nombre: string
-  apellido: string
-  email: string
-  role: string
-  isSuperAdmin: boolean
-  company?: {
-    id: string
-    nombre: string
-    subscription?: {
-      plan: string
-      status: string
-      fechaExpiracion: string
-    }
-  }
-}
 
 const adminMenuItems = [
   {
@@ -123,49 +101,16 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [alerts, setAlerts] = useState<number>(0)
   const pathname = usePathname()
 
   useEffect(() => {
-    // Simular usuario superadmin por defecto
-    setUser({
-      id: "superadmin-1",
-      nombre: "Super",
-      apellido: "Admin",
-      email: "admin@lomejordemitiera.com",
-      role: "SUPERADMIN",
-      isSuperAdmin: true,
-      company: {
-        id: "admin-company",
-        nombre: "Administración del Sistema",
-        subscription: {
-          plan: "EMPRESARIAL",
-          status: "ACTIVO",
-          fechaExpiracion: "2030-12-31T23:59:59Z"
-        }
-      }
-    })
+    // Simular alertas sin autenticación
     setAlerts(5)
-    setIsLoading(false)
   }, [])
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/cerrar-sesion", { method: "POST" })
-      window.location.href = "/iniciar-sesion"
-    } catch (error) {
-      console.error("Error logging out:", error)
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    )
+  const handleLogout = () => {
+    window.location.href = "/"
   }
 
   return (
@@ -180,7 +125,7 @@ export default function AdminLayout({
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Panel Administrativo</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {user?.nombre} {user?.apellido}
+                      Super Admin
                     </span>
                   </div>
                 </Link>
@@ -236,7 +181,7 @@ export default function AdminLayout({
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Resumen del Sistema */}
+          {/* Estado del Sistema */}
           <SidebarGroup>
             <SidebarGroupLabel>Estado del Sistema</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -278,10 +223,8 @@ export default function AdminLayout({
                       <span className="text-sm font-bold">SA</span>
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {user?.nombre} {user?.apellido}
-                      </span>
-                      <span className="truncate text-xs">Superadministrador</span>
+                      <span className="truncate font-semibold">Super Admin</span>
+                      <span className="truncate text-xs">admin@sistema.com</span>
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
@@ -297,10 +240,8 @@ export default function AdminLayout({
                         <span className="text-sm font-bold">SA</span>
                       </div>
                       <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">
-                          {user?.nombre} {user?.apellido}
-                        </span>
-                        <span className="truncate text-xs">{user?.email}</span>
+                        <span className="truncate font-semibold">Super Admin</span>
+                        <span className="truncate text-xs">admin@sistema.com</span>
                       </div>
                     </div>
                   </DropdownMenuLabel>

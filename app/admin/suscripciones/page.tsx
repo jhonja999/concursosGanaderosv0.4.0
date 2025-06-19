@@ -54,8 +54,6 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
-  TrendingDown,
-  Calendar,
   DollarSign,
   Building2,
   Filter,
@@ -121,7 +119,7 @@ export default function SuscripcionesPage() {
 
   const fetchSubscriptions = async () => {
     try {
-      // Simular datos de suscripciones
+      // Datos simulados de suscripciones
       const mockSubscriptions: Subscription[] = [
         {
           id: "1",
@@ -196,7 +194,7 @@ export default function SuscripcionesPage() {
 
   const fetchPaymentHistory = async () => {
     try {
-      // Simular historial de pagos
+      // Historial de pagos simulado
       const mockPayments: PaymentHistory[] = [
         {
           id: "1",
@@ -306,33 +304,18 @@ export default function SuscripcionesPage() {
   }
 
   const handleRenewSubscription = async (subscriptionId: string) => {
-    try {
-      // Aquí iría la lógica para renovar la suscripción
-      console.log("Renewing subscription:", subscriptionId)
-    } catch (error) {
-      console.error("Error renewing subscription:", error)
-    }
+    console.log("Renewing subscription:", subscriptionId)
   }
 
   const handleUpgradeSubscription = async (subscriptionId: string) => {
-    try {
-      // Aquí iría la lógica para actualizar la suscripción
-      console.log("Upgrading subscription:", subscriptionId)
-    } catch (error) {
-      console.error("Error upgrading subscription:", error)
-    }
+    console.log("Upgrading subscription:", subscriptionId)
   }
 
   const handleSuspendSubscription = async (subscriptionId: string) => {
     if (confirm("¿Estás seguro de que quieres suspender esta suscripción?")) {
-      try {
-        // Aquí iría la lógica para suspender la suscripción
-        setSubscriptions(subscriptions.map(sub => 
-          sub.id === subscriptionId ? { ...sub, status: "SUSPENDIDO" } : sub
-        ))
-      } catch (error) {
-        console.error("Error suspending subscription:", error)
-      }
+      setSubscriptions(subscriptions.map(sub => 
+        sub.id === subscriptionId ? { ...sub, status: "SUSPENDIDO" } : sub
+      ))
     }
   }
 
