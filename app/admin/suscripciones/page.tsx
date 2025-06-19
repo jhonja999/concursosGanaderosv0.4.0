@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
+import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -45,6 +47,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
   Search,
   MoreHorizontal,
   Edit,
@@ -61,8 +69,25 @@ import {
   RefreshCw,
   ArrowUpCircle,
   ArrowDownCircle,
+  Users,
+  Trophy,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Settings,
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
+
+interface User {
+  id: string
+  nombre: string
+  apellido: string
+  email: string
+  role: string
+  isActive: boolean
+  contestAccess: boolean
+  lastLogin?: string
+}
 
 interface Subscription {
   id: string
@@ -84,6 +109,8 @@ interface Subscription {
   paymentMethod: string
   lastPayment?: string
   nextPayment?: string
+  users: User[]
+  contestAccessEnabled: boolean
 }
 
 interface PaymentHistory {
@@ -106,6 +133,7 @@ export default function SuscripcionesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("subscriptions")
 
   useEffect(() => {
@@ -119,7 +147,7 @@ export default function SuscripcionesPage() {
 
   const fetchSubscriptions = async () => {
     try {
-      // Datos simulados de suscripciones
+      // Datos simulados de suscripciones con usuarios
       const mockSubscriptions: Subscription[] = [
         {
           id: "1",
@@ -141,6 +169,39 @@ export default function SuscripcionesPage() {
           paymentMethod: "Tarjeta de Crédito",
           lastPayment: "2024-01-01T00:00:00Z",
           nextPayment: "2025-01-01T00:00:00Z",
+          contestAccessEnabled: true,
+          users: [
+            {
+              id: "u1",
+              nombre: "Juan",
+              apellido: "Pérez",
+              email: "juan.perez@ganaderaprogreso.com",
+              role: "CONCURSO_ADMIN",
+              isActive: true,
+              contestAccess: true,
+              lastLogin: "2024-01-20T14:30:00Z",
+            },
+            {
+              id: "u2",
+              nombre: "María",
+              apellido: "González",
+              email: "maria.gonzalez@ganaderaprogreso.com",
+              role: "REGISTRADOR",
+              isActive: true,
+              contestAccess: true,
+              lastLogin: "2024-01-20T09:15:00Z",
+            },
+            {
+              id: "u3",
+              nombre: "Carlos",
+              apellido: "Rodríguez",
+              email: "carlos.rodriguez@ganaderaprogreso.com",
+              role: "REGISTRADOR",
+              isActive: true,
+              contestAccess: false,
+              lastLogin: "2024-01-19T16:45:00Z",
+            },
+          ],
         },
         {
           id: "2",
@@ -161,6 +222,27 @@ export default function SuscripcionesPage() {
           autoRenewal: false,
           paymentMethod: "Transferencia",
           lastPayment: "2023-06-01T00:00:00Z",
+          contestAccessEnabled: false,
+          users: [
+            {
+              id: "u4",
+              nombre: "Ana",
+              apellido: "Martínez",
+              email: "ana.martinez@ganadernorte.com",
+              role: "CONCURSO_ADMIN",
+              isActive: false,
+              contestAccess: false,
+            },
+            {
+              id: "u5",
+              nombre: "Luis",
+              apellido: "García",
+              email: "luis.garcia@ganadernorte.com",
+              role: "REGISTRADOR",
+              isActive: true,
+              contestAccess: false,
+            },
+          ],
         },
         {
           id: "3",
@@ -182,6 +264,39 @@ export default function SuscripcionesPage() {
           paymentMethod: "Tarjeta de Crédito",
           lastPayment: "2024-01-10T00:00:00Z",
           nextPayment: "2024-02-28T00:00:00Z",
+          contestAccessEnabled: true,
+          users: [
+            {
+              id: "u6",
+              nombre: "Elena",
+              apellido: "Vargas",
+              email: "elena.vargas@lecherasur.com",
+              role: "CONCURSO_ADMIN",
+              isActive: true,
+              contestAccess: true,
+              lastLogin: "2024-01-20T11:20:00Z",
+            },
+            {
+              id: "u7",
+              nombre: "Roberto",
+              apellido: "Silva",
+              email: "roberto.silva@lecherasur.com",
+              role: "REGISTRADOR",
+              isActive: true,
+              contestAccess: true,
+              lastLogin: "2024-01-20T08:45:00Z",
+            },
+            {
+              id: "u8",
+              nombre: "Patricia",
+              apellido: "López",
+              email: "patricia.lopez@lecherasur.com",
+              role: "REGISTRADOR",
+              isActive: true,
+              contestAccess: false,
+              lastLogin: "2024-01-19T15:30:00Z",
+            },
+          ],
         },
       ]
       setSubscriptions(mockSubscriptions)
@@ -296,11 +411,73 @@ export default function SuscripcionesPage() {
     return <Badge variant={config.variant}>{config.text}</Badge>
   }
 
+  const getRoleBadge = (role: string) => {
+    const variants = {
+      CONCURSO_ADMIN: { variant: "default" as const, text: "Admin" },
+      REGISTRADOR: { variant: "secondary" as const, text: "Registrador" },
+    }
+
+    const config = variants[role as keyof typeof variants] || { variant: "outline" as const, text: role }
+    return <Badge variant={config.variant}>{config.text}</Badge>
+  }
+
+  const getAccessBadge = (hasAccess: boolean) => {
+    return hasAccess ? (
+      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+        <ShieldCheck className="h-3 w-3 mr-1" />
+        Permitido
+      </Badge>
+    ) : (
+      <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+        <ShieldX className="h-3 w-3 mr-1" />
+        Bloqueado
+      </Badge>
+    )
+  }
+
   const isExpiringSoon = (fechaExpiracion: string) => {
     const expDate = new Date(fechaExpiracion)
     const now = new Date()
     const daysUntilExpiration = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     return daysUntilExpiration <= 30 && daysUntilExpiration > 0
+  }
+
+  const handleToggleContestAccess = async (subscriptionId: string, enabled: boolean) => {
+    setSubscriptions(subscriptions.map(sub => 
+      sub.id === subscriptionId 
+        ? { 
+            ...sub, 
+            contestAccessEnabled: enabled,
+            users: sub.users.map(user => ({ ...user, contestAccess: enabled ? user.contestAccess : false }))
+          } 
+        : sub
+    ))
+  }
+
+  const handleToggleUserContestAccess = async (subscriptionId: string, userId: string, hasAccess: boolean) => {
+    setSubscriptions(subscriptions.map(sub => 
+      sub.id === subscriptionId 
+        ? {
+            ...sub,
+            users: sub.users.map(user => 
+              user.id === userId ? { ...user, contestAccess: hasAccess } : user
+            )
+          }
+        : sub
+    ))
+  }
+
+  const handleBulkToggleUsers = async (subscriptionId: string, userIds: string[], hasAccess: boolean) => {
+    setSubscriptions(subscriptions.map(sub => 
+      sub.id === subscriptionId 
+        ? {
+            ...sub,
+            users: sub.users.map(user => 
+              userIds.includes(user.id) ? { ...user, contestAccess: hasAccess } : user
+            )
+          }
+        : sub
+    ))
   }
 
   const handleRenewSubscription = async (subscriptionId: string) => {
@@ -335,6 +512,10 @@ export default function SuscripcionesPage() {
   const activeCount = subscriptions.filter(sub => sub.status === "ACTIVO").length
   const expiredCount = subscriptions.filter(sub => sub.status === "EXPIRADO").length
 
+  const totalUsersWithAccess = subscriptions.reduce((sum, sub) => 
+    sum + sub.users.filter(user => user.contestAccess && user.isActive).length, 0
+  )
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -350,7 +531,7 @@ export default function SuscripcionesPage() {
         <div>
           <h1 className="text-3xl font-bold">Control de Suscripciones</h1>
           <p className="text-muted-foreground">
-            Gestiona planes, pagos y renovaciones de suscripciones
+            Gestiona planes, pagos, renovaciones y acceso a concursos
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -366,7 +547,7 @@ export default function SuscripcionesPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos Mensuales</CardTitle>
@@ -419,12 +600,26 @@ export default function SuscripcionesPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Acceso a Concursos</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{totalUsersWithAccess}</div>
+            <p className="text-xs text-muted-foreground">
+              Usuarios con acceso
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="subscriptions">Suscripciones</TabsTrigger>
+          <TabsTrigger value="access-control">Control de Acceso</TabsTrigger>
           <TabsTrigger value="payments">Historial de Pagos</TabsTrigger>
           <TabsTrigger value="analytics">Análisis</TabsTrigger>
         </TabsList>
@@ -504,6 +699,7 @@ export default function SuscripcionesPage() {
                     <TableHead>Plan</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Uso</TableHead>
+                    <TableHead>Acceso Concursos</TableHead>
                     <TableHead>Vencimiento</TableHead>
                     <TableHead>Precio</TableHead>
                     <TableHead>Acciones</TableHead>
@@ -560,6 +756,25 @@ export default function SuscripcionesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={subscription.contestAccessEnabled}
+                              onCheckedChange={(checked) => 
+                                handleToggleContestAccess(subscription.id, checked)
+                              }
+                              disabled={subscription.status !== "ACTIVO"}
+                            />
+                            <span className="text-xs">
+                              {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {subscription.users.filter(u => u.contestAccess && u.isActive).length} de {subscription.users.filter(u => u.isActive).length} usuarios
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="text-sm">
                           {formatDate(subscription.fechaExpiracion)}
                         </div>
@@ -596,6 +811,15 @@ export default function SuscripcionesPage() {
                               <Eye className="mr-2 h-4 w-4" />
                               Ver detalles
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedSubscription(subscription)
+                                setIsAccessDialogOpen(true)
+                              }}
+                            >
+                              <Shield className="mr-2 h-4 w-4" />
+                              Gestionar acceso
+                            </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
@@ -631,6 +855,158 @@ export default function SuscripcionesPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="access-control" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Control de Acceso a Concursos
+              </CardTitle>
+              <CardDescription>
+                Gestiona qué usuarios pueden acceder a las funcionalidades de concursos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                {subscriptions.map((subscription) => (
+                  <AccordionItem key={subscription.id} value={subscription.id}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center justify-between w-full mr-4">
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-4 w-4" />
+                          <span className="font-medium">{subscription.company.nombre}</span>
+                          {getPlanBadge(subscription.plan)}
+                          {getStatusBadge(subscription.status)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={subscription.contestAccessEnabled ? "default" : "secondary"}>
+                            {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {subscription.users.filter(u => u.contestAccess && u.isActive).length}/{subscription.users.filter(u => u.isActive).length} usuarios
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 pt-4">
+                        {/* Global Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                          <div>
+                            <h4 className="font-medium">Acceso Global a Concursos</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Habilitar o deshabilitar el acceso a concursos para toda la compañía
+                            </p>
+                          </div>
+                          <Switch
+                            checked={subscription.contestAccessEnabled}
+                            onCheckedChange={(checked) => 
+                              handleToggleContestAccess(subscription.id, checked)
+                            }
+                            disabled={subscription.status !== "ACTIVO"}
+                          />
+                        </div>
+
+                        {/* Bulk Actions */}
+                        {subscription.contestAccessEnabled && subscription.users.length > 0 && (
+                          <div className="flex items-center gap-2 p-4 border rounded-lg">
+                            <span className="text-sm font-medium">Acciones masivas:</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => 
+                                handleBulkToggleUsers(
+                                  subscription.id, 
+                                  subscription.users.filter(u => u.isActive).map(u => u.id), 
+                                  true
+                                )
+                              }
+                            >
+                              <ShieldCheck className="h-4 w-4 mr-1" />
+                              Permitir todos
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => 
+                                handleBulkToggleUsers(
+                                  subscription.id, 
+                                  subscription.users.filter(u => u.isActive).map(u => u.id), 
+                                  false
+                                )
+                              }
+                            >
+                              <ShieldX className="h-4 w-4 mr-1" />
+                              Bloquear todos
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Users List */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Usuarios ({subscription.users.length})</h4>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Usuario</TableHead>
+                                <TableHead>Rol</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead>Último Acceso</TableHead>
+                                <TableHead>Acceso a Concursos</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {subscription.users.map((user) => (
+                                <TableRow key={user.id}>
+                                  <TableCell>
+                                    <div>
+                                      <div className="font-medium">
+                                        {user.nombre} {user.apellido}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {user.email}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {getRoleBadge(user.role)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.isActive ? "default" : "secondary"}>
+                                      {user.isActive ? "Activo" : "Inactivo"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      {user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <Switch
+                                        checked={user.contestAccess}
+                                        onCheckedChange={(checked) => 
+                                          handleToggleUserContestAccess(subscription.id, user.id, checked)
+                                        }
+                                        disabled={!subscription.contestAccessEnabled || !user.isActive}
+                                      />
+                                      {getAccessBadge(user.contestAccess)}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </CardContent>
           </Card>
         </TabsContent>
@@ -735,6 +1111,71 @@ export default function SuscripcionesPage() {
                       </div>
                     )
                   })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Acceso a Concursos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Compañías con acceso habilitado</span>
+                      <span className="text-sm text-muted-foreground">
+                        {subscriptions.filter(s => s.contestAccessEnabled).length} de {subscriptions.length}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(subscriptions.filter(s => s.contestAccessEnabled).length / subscriptions.length) * 100} 
+                      className="h-2" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Usuarios con acceso</span>
+                      <span className="text-sm text-muted-foreground">
+                        {totalUsersWithAccess} de {subscriptions.reduce((sum, sub) => sum + sub.users.filter(u => u.isActive).length, 0)}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(totalUsersWithAccess / subscriptions.reduce((sum, sub) => sum + sub.users.filter(u => u.isActive).length, 0)) * 100} 
+                      className="h-2" 
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Métricas de Uso</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {subscriptions.reduce((sum, sub) => sum + sub.usersUsed, 0)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Usuarios totales</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {subscriptions.reduce((sum, sub) => sum + sub.maxUsers, 0)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Capacidad total</div>
+                    </div>
+                  </div>
+                  <Progress 
+                    value={(subscriptions.reduce((sum, sub) => sum + sub.usersUsed, 0) / subscriptions.reduce((sum, sub) => sum + sub.maxUsers, 0)) * 100} 
+                    className="h-2" 
+                  />
+                  <div className="text-center text-sm text-muted-foreground">
+                    {((subscriptions.reduce((sum, sub) => sum + sub.usersUsed, 0) / subscriptions.reduce((sum, sub) => sum + sub.maxUsers, 0)) * 100).toFixed(1)}% de capacidad utilizada
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -860,6 +1301,161 @@ export default function SuscripcionesPage() {
             </Button>
             <Button>
               Editar Suscripción
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Access Control Dialog */}
+      <Dialog open={isAccessDialogOpen} onOpenChange={setIsAccessDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Control de Acceso a Concursos
+            </DialogTitle>
+            <DialogDescription>
+              Gestiona el acceso a concursos para {selectedSubscription?.company.nombre}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSubscription && (
+            <div className="space-y-6">
+              {/* Global Toggle */}
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <h4 className="font-medium">Acceso Global a Concursos</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Habilitar o deshabilitar el acceso a concursos para toda la compañía
+                  </p>
+                </div>
+                <Switch
+                  checked={selectedSubscription.contestAccessEnabled}
+                  onCheckedChange={(checked) => {
+                    handleToggleContestAccess(selectedSubscription.id, checked)
+                    setSelectedSubscription({
+                      ...selectedSubscription,
+                      contestAccessEnabled: checked,
+                      users: selectedSubscription.users.map(user => ({ 
+                        ...user, 
+                        contestAccess: checked ? user.contestAccess : false 
+                      }))
+                    })
+                  }}
+                  disabled={selectedSubscription.status !== "ACTIVO"}
+                />
+              </div>
+
+              {/* Bulk Actions */}
+              {selectedSubscription.contestAccessEnabled && selectedSubscription.users.length > 0 && (
+                <div className="flex items-center gap-2 p-4 border rounded-lg">
+                  <span className="text-sm font-medium">Acciones masivas:</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const activeUserIds = selectedSubscription.users.filter(u => u.isActive).map(u => u.id)
+                      handleBulkToggleUsers(selectedSubscription.id, activeUserIds, true)
+                      setSelectedSubscription({
+                        ...selectedSubscription,
+                        users: selectedSubscription.users.map(user => 
+                          user.isActive ? { ...user, contestAccess: true } : user
+                        )
+                      })
+                    }}
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-1" />
+                    Permitir todos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const activeUserIds = selectedSubscription.users.filter(u => u.isActive).map(u => u.id)
+                      handleBulkToggleUsers(selectedSubscription.id, activeUserIds, false)
+                      setSelectedSubscription({
+                        ...selectedSubscription,
+                        users: selectedSubscription.users.map(user => 
+                          user.isActive ? { ...user, contestAccess: false } : user
+                        )
+                      })
+                    }}
+                  >
+                    <ShieldX className="h-4 w-4 mr-1" />
+                    Bloquear todos
+                  </Button>
+                </div>
+              )}
+
+              {/* Users Table */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Usuarios ({selectedSubscription.users.length})</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Último Acceso</TableHead>
+                      <TableHead>Acceso a Concursos</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedSubscription.users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {user.nombre} {user.apellido}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {user.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getRoleBadge(user.role)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.isActive ? "default" : "secondary"}>
+                            {user.isActive ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={user.contestAccess}
+                              onCheckedChange={(checked) => {
+                                handleToggleUserContestAccess(selectedSubscription.id, user.id, checked)
+                                setSelectedSubscription({
+                                  ...selectedSubscription,
+                                  users: selectedSubscription.users.map(u => 
+                                    u.id === user.id ? { ...u, contestAccess: checked } : u
+                                  )
+                                })
+                              }}
+                              disabled={!selectedSubscription.contestAccessEnabled || !user.isActive}
+                            />
+                            {getAccessBadge(user.contestAccess)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAccessDialogOpen(false)}>
+              Cerrar
+            </Button>
+            <Button onClick={() => setIsAccessDialogOpen(false)}>
+              Guardar Cambios
             </Button>
           </DialogFooter>
         </DialogContent>
