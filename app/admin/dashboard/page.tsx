@@ -41,6 +41,7 @@ import {
   Activity,
   Calendar,
   Eye,
+  BarChart3,
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import Link from "next/link"
