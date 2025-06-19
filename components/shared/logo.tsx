@@ -32,10 +32,10 @@ export function Logo({ variant = "default", size = "md", href = "/", className, 
   const currentSize = sizeClasses[size]
 
   const LogoContent = () => (
-    <div className={cn("flex items-center font-bold text-viridian", currentSize.container, className)}>
+    <div className={cn("flex items-center font-bold text-black", currentSize.container, className)}>
       <div
         className={cn(
-          "flex items-center justify-center rounded-lg bg-viridian text-white",
+          "flex items-center justify-center rounded-lg bg-viridian text-black",
           currentSize.icon,
           variant === "compact" && "rounded-full",
         )}
@@ -44,7 +44,7 @@ export function Logo({ variant = "default", size = "md", href = "/", className, 
       </div>
 
       {showText && variant !== "compact" && (
-        <div className="flex flex-col leading-tight">
+        <div className="flex flex-col leading-tight text-black">
           <span className={cn("font-bold", currentSize.text)}>Lo Mejor de Mi Tierra</span>
           {variant === "default" && size !== "sm" && (
             <span className="text-xs text-muted-foreground font-normal">Concursos Ganaderos</span>

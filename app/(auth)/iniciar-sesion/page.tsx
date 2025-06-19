@@ -8,7 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
@@ -57,79 +57,101 @@ export default function IniciarSesionPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <Logo size="md" href="/" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Iniciar Sesión</CardTitle>
-          <CardDescription className="text-center">Ingresa tus credenciales para acceder al sistema</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo Section */}
+        <div className="text-center">
+          <Logo size="lg" href="/" className="justify-center" />
+          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">Iniciar sesión</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            ¿No tienes una cuenta?{" "}
+            <Link href="/registro" className="font-medium text-viridian hover:text-viridian/80">
+              Regístrate gratis
+            </Link>
+          </p>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={formData.email}
-                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
+        {/* Form Card */}
+        <Card className="border-0 shadow-xl">
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-6 pt-6">
+              {error && (
+                <Alert variant="destructive" className="border-red-200 bg-red-50">
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    Dirección de email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nombre@ejemplo.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    className="h-11 border-gray-300 focus:border-viridian focus:ring-viridian"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Contraseña
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Ingresa tu contraseña"
+                      value={formData.password}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                      className="h-11 border-gray-300 focus:border-viridian focus:ring-viridian pr-10"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Iniciar Sesión
-            </Button>
+              <Button
+                type="submit"
+                className="w-full h-11 bg-viridian hover:bg-viridian/90 text-white font-medium"
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Continuar
+              </Button>
+            </CardContent>
+          </form>
+        </Card>
 
-            <div className="text-center space-y-2">
-              <Link href="/olvide-contrasena" className="text-sm text-muted-foreground hover:text-primary block">
-                ¿Olvidaste tu contraseña?
-              </Link>
-              <div className="text-sm text-muted-foreground">
-                ¿No tienes cuenta?{" "}
-                <Link href="/registro" className="text-primary hover:underline">
-                  Regístrate aquí
-                </Link>
-              </div>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
+        {/* Footer Links */}
+        <div className="text-center">
+          <Link href="/olvide-contrasena" className="text-sm font-medium text-viridian hover:text-viridian/80">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
+        {/* Security Notice */}
+        <div className="text-center">
+          <p className="text-xs text-gray-500">Protegido por medidas de seguridad avanzadas</p>
+        </div>
+      </div>
     </div>
   )
 }

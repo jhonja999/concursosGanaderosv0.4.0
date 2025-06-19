@@ -1,75 +1,31 @@
 import Link from "next/link"
-import Image from "next/image"
-import { MilkIcon as Cow, Calendar, Building, Tag, Check, Star, Users, Trophy, BarChart3 } from "lucide-react"
+import { Check, Star, Users, Trophy, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { prisma } from "@/lib/prisma"
-import { formatDate, formatCurrency } from "@/lib/utils"
+// import { prisma } from "@/lib/prisma" // Temporarily commented out due to initialization error
+import { formatCurrency } from "@/lib/utils"
+import { Logo } from "@/components/shared/logo"
 
 export default async function HomePage() {
-  // Obtener concursos destacados
-  const concursos = await prisma.concurso.findMany({
-    where: {
-      isPublished: true,
-      isFeatured: true,
-    },
-    orderBy: {
-      fechaInicio: "desc",
-    },
-    take: 3,
-    include: {
-      company: true,
-      _count: {
-        select: {
-          participantes: true,
-        },
-      },
-    },
-  })
+  // Temporarily using mock data to allow the page to render and enable testing of auth flows
+  // The Prisma client initialization issue needs to be resolved for full data functionality.
+  const concursos: any[] = [] // Mock empty array
+  const ganado: any[] = [] // Mock empty array
 
-  // Obtener ganado destacado
-  const ganado = await prisma.ganado.findMany({
-    where: {
-      isPublished: true,
-      isFeatured: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 4,
-    include: {
-      GanadoImage: {
-        include: {
-          image: true,
-        },
-        where: {
-          principal: true,
-        },
-        take: 1,
-      },
-      expositor: true,
-    },
-  })
-
-  // Estadísticas generales
-  const stats = await prisma.$transaction([
-    prisma.concurso.count({ where: { isPublished: true } }),
-    prisma.participante.count(),
-    prisma.company.count({ where: { isActive: true } }),
-  ])
-
-  const [totalConcursos, totalParticipantes, totalEmpresas] = stats
+  // Mock general statistics
+  const totalConcursos = 0
+  const totalParticipantes = 0
+  const totalEmpresas = 0
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
-      <nav className="absolute top-0 left-0 right-0 z-50 bg-transparent">
+      <nav className="absolute top-0 left-0 right-0 z-50 bg-primary">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-2">
-              <Cow className="h-8 w-8 text-white" />
-              <span className="text-xl font-bold text-white">Lo Mejor de Mi Tierra</span>
+              <Logo size="md" className="text-white [&>div]:bg-white [&>div]:text-viridian" showText={true} href="/" />
             </div>
             <div className="hidden md:flex items-center space-x-6">
               <Link href="/concursos" className="text-white hover:text-green-200 transition-colors">
@@ -89,7 +45,7 @@ export default async function HomePage() {
                 </Button>
               </Link>
               <Link href="/registro">
-                <Button className="bg-viridian hover:bg-viridian/90 text-white">Registrarse</Button>
+                <Button variant="ghost" className="bg-viridian hover:bg-viridian/90 text-white hover:bg-white/20">Registrarse</Button>
               </Link>
             </div>
           </div>
@@ -138,7 +94,7 @@ export default async function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-2 border-white text-white hover:bg-white hover:text-viridian rounded-full py-4 px-8 text-lg transition-all duration-300 hover:scale-105 active:scale-95"
+                  className="border-2 border-white text-black hover:bg-white hover:text-viridian rounded-full py-4 px-8 text-lg transition-all duration-300 hover:scale-105 active:scale-95"
                 >
                   Explorar Concursos
                 </Button>
@@ -348,125 +304,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Concursos Destacados */}
-      <section className="w-full py-16 md:py-24 bg-gradient-to-br from-charcoal to-eerie-black text-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-facundo">Concursos Destacados</h2>
-            <p className="text-xl text-white/80 max-w-2xl mx-auto font-nunito">
-              Descubre los próximos eventos y concursos ganaderos más importantes
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {concursos.map((concurso) => (
-              <Link key={concurso.id} href={`/concursos/${concurso.slug}`}>
-                <Card className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Calendar className="h-5 w-5 text-pastel-green" />
-                      <span className="text-sm text-white/80">{formatDate(concurso.fechaInicio)}</span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-3 text-white">{concurso.nombre}</h3>
-                    <p className="text-white/70 mb-4 line-clamp-2">{concurso.descripcion || "Sin descripción"}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-white/60" />
-                        <span className="text-sm text-white/80">{concurso.company.nombre}</span>
-                      </div>
-                      <Badge variant="secondary" className="bg-pastel-green/20 text-pastel-green">
-                        {concurso._count.participantes} participantes
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/concursos">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-white text-white hover:bg-white hover:text-charcoal"
-              >
-                Ver Todos los Concursos
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Ganado Destacado */}
-      <section className="w-full py-16 md:py-24 bg-mint-cream">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-facundo text-charcoal">Ganado Destacado</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-nunito">
-              Conoce los ejemplares más destacados de nuestros concursos
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-            {ganado.map((animal) => (
-              <Link key={animal.id} href={`/ganado/${animal.slug}`}>
-                <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-105">
-                  <div className="relative aspect-square bg-gradient-to-br from-viridian/10 to-pastel-green/10 flex items-center justify-center">
-                    {animal.GanadoImage[0]?.image.url ? (
-                      <Image
-                        alt={animal.nombre}
-                        className="object-cover"
-                        fill
-                        src={animal.GanadoImage[0].image.url || "/placeholder.svg"}
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <Cow className="h-16 w-16 text-viridian/50 mx-auto mb-2" />
-                        <span className="text-sm text-muted-foreground">Sin imagen</span>
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-lg mb-2 text-charcoal">{animal.nombre}</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{animal.categoria || "Sin categoría"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Cow className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{animal.raza || "Raza no especificada"}</span>
-                      </div>
-                      {animal.expositor && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{animal.expositor.nombre}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/ganado">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-viridian text-viridian hover:bg-viridian hover:text-white"
-              >
-                Ver Todo el Ganado
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
-      <section className="w-full py-16 md:py-24 bg-gradient-to-r from-viridian to-pastel-green text-white">
+      <section className="w-full py-16 md:py-24 bg-gradient-to-r from-emerald-800 to-lime-200 text-white">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold mb-6 font-facundo">
@@ -478,12 +317,12 @@ export default async function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/registro">
-                <Button size="lg" className="bg-white text-viridian hover:bg-white/90 font-bold px-8 py-4">
+                <Button size="lg" className="bg-white text-black hover:bg-white/90 font-bold px-8 py-4">
                   Comenzar Gratis
                 </Button>
               </Link>
               <Link href="/iniciar-sesion">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/20 px-8 py-4">
+                <Button size="lg" variant="outline" className="border-white text-black hover:bg-white/20 px-8 py-4">
                   Iniciar Sesión
                 </Button>
               </Link>
@@ -493,19 +332,16 @@ export default async function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-charcoal text-white py-12">
+      <footer className="bg-charcoal text-black py-12">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Cow className="h-8 w-8 text-viridian" />
-                <span className="text-xl font-bold">Lo Mejor de Mi Tierra</span>
-              </div>
+              <Logo size="md" className="mb-4" showText={true} href="/" />
               <p className="text-white/70">La plataforma líder para concursos ganaderos en Colombia.</p>
             </div>
             <div>
               <h4 className="font-bold mb-4">Producto</h4>
-              <ul className="space-y-2 text-white/70">
+              <ul className="space-y-2 text-black/70">
                 <li>
                   <Link href="/concursos" className="hover:text-white">
                     Concursos
@@ -525,7 +361,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="font-bold mb-4">Empresa</h4>
-              <ul className="space-y-2 text-white/70">
+              <ul className="space-y-2 text-black/70">
                 <li>
                   <Link href="/nosotros" className="hover:text-white">
                     Nosotros
@@ -545,7 +381,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="font-bold mb-4">Soporte</h4>
-              <ul className="space-y-2 text-white/70">
+              <ul className="space-y-2 text-black/70">
                 <li>
                   <Link href="/ayuda" className="hover:text-white">
                     Centro de Ayuda
@@ -564,7 +400,7 @@ export default async function HomePage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/20 mt-8 pt-8 text-center text-white/70">
+          <div className="border-t border-white/20 mt-8 pt-8 text-center text-black/70">
             <p>&copy; 2024 Lo Mejor de Mi Tierra. Todos los derechos reservados.</p>
           </div>
         </div>
