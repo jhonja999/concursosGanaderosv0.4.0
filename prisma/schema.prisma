@@ -37,43 +37,6 @@ enum CompanyRequestStatus {
   EN_REVISION          // En proceso de revisión
 }
 
-// =========================================================================
-// ENUMERACIONES FUTURAS (COMENTADAS PARA EXPANSIÓN)
-// =========================================================================
-
-// enum SexoGanado {
-//   MACHO                // Ganado macho
-//   HEMBRA               // Ganado hembra
-//   SIN_RESTRICCION      // Para categorías sin restricción de sexo
-// }
-
-// enum EstadoConcurso {
-//   BORRADOR             // En preparación
-//   INSCRIPCIONES_ABIERTAS // Aceptando inscripciones
-//   INSCRIPCIONES_CERRADAS // Inscripciones cerradas
-//   EN_EVALUACION        // En proceso de calificación
-//   FINALIZADO           // Concurso terminado
-// }
-
-// enum TipoConcurso {
-//   GANADO               // Concurso de ganado
-//   PRODUCTO             // Concurso de productos (café, lácteos, etc.)
-//   MIXTO                // Concurso que acepta ambos
-// }
-
-// enum TipoEvento {
-//   CONFERENCIA
-//   TALLER
-//   FERIA
-//   EXPOSICION
-//   NETWORKING
-//   PREMIACION
-// }
-
-// =========================================================================
-// MODELO DE USUARIO (CORE)
-// =========================================================================
-
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -95,8 +58,6 @@ model User {
   // Relaciones esenciales
   passwordResetTokens     PasswordResetToken[]
   companyRequestsReviewed CompanyRequest[]
-  concursosCreated        Concurso[] @relation("ConcursoCreator")
-  participantesRegistrados Participante[]
 
   @@map("users")
 }
@@ -150,8 +111,6 @@ model Company {
 
   // Relaciones
   users     User[]
-  concursos Concurso[]
-  expositores Expositor[]
   
   // Solicitud original (si fue creada por solicitud)
   companyRequest CompanyRequest?
@@ -228,6 +187,47 @@ model CompanyRequest {
   @@index([email])
   @@map("company_requests")
 }
+
+// =========================================================================
+// ENUMERACIONES FUTURAS (COMENTADAS PARA EXPANSIÓN)
+// =========================================================================
+
+// enum SexoGanado {
+//   MACHO                // Ganado macho
+//   HEMBRA               // Ganado hembra
+//   SIN_RESTRICCION      // Para categorías sin restricción de sexo
+// }
+
+// enum EstadoConcurso {
+//   BORRADOR             // En preparación
+//   INSCRIPCIONES_ABIERTAS // Aceptando inscripciones
+//   INSCRIPCIONES_CERRADAS // Inscripciones cerradas
+//   EN_EVALUACION        // En proceso de calificación
+//   FINALIZADO           // Concurso terminado
+// }
+
+// enum TipoConcurso {
+//   GANADO               // Concurso de ganado
+//   PRODUCTO             // Concurso de productos (café, lácteos, etc.)
+//   MIXTO                // Concurso que acepta ambos
+// }
+
+// enum TipoEvento {
+//   CONFERENCIA
+//   TALLER
+//   FERIA
+//   EXPOSICION
+//   NETWORKING
+//   PREMIACION
+// }
+
+// =========================================================================
+// MODELO DE USUARIO (CORE)
+// =========================================================================
+
+// =========================================================================
+// MODELO DE COMPAÑÍA
+// =========================================================================
 
 // =========================================================================
 // MODELOS FUTUROS PARA EXPANSIÓN (COMENTADOS)
@@ -344,6 +344,7 @@ model CompanyRequest {
 //   descripcion  String?
 //   raza         String?
 //   sexo         SexoGanado
+//   imagenurl   String?
 //   numRegistro  String?      
 //   puntaje      Int?
 //   peso         Decimal?    @db.Decimal(8, 2)
@@ -358,10 +359,6 @@ model CompanyRequest {
   
 //   createdAt    DateTime    @default(now())
 //   updatedAt    DateTime    @updatedAt
-
-//   // Relaciones
-//   GanadoImage   GanadoImage[]
-//   participantes Participante[]
 
 //   @@index([expositorId])
 //   @@map("ganado")
