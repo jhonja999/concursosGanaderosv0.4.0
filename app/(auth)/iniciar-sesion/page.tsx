@@ -35,6 +35,7 @@ export default function IniciarSesionPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        credentials: "include", // Ensure cookies are included
       })
 
       const data = await response.json()
@@ -43,13 +44,24 @@ export default function IniciarSesionPage() {
         throw new Error(data.error || "Error al iniciar sesión")
       }
 
-      // Redirigir según el rol
-      if (data.user.role === "SUPERADMIN") {
-        router.push("/admin/dashboard")
+      // Debug: Log the response data
+      console.log("Login successful, user data:", data.user)
+      console.log("User role:", data.user.role)
+      console.log("Is SuperAdmin:", data.user.isSuperAdmin)
+
+      // Wait a moment for the cookie to be set
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Force a full page refresh to ensure proper redirection
+      if (data.user.role === "SUPERADMIN" || data.user.isSuperAdmin) {
+        console.log("Redirecting to admin dashboard...")
+        window.location.href = "/admin/dashboard"
       } else {
-        router.push("/dashboard")
+        console.log("Redirecting to user dashboard...")
+        window.location.href = "/dashboard"
       }
     } catch (error) {
+      console.error("Login error:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
       setIsLoading(false)
@@ -130,7 +142,7 @@ export default function IniciarSesionPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-viridian hover:bg-viridian/90 text-white font-medium"
+                className="w-full h-11 bg-viridian hover:bg-viridian/90 text-black font-medium"
                 disabled={isLoading}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

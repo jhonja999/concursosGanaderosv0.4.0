@@ -235,7 +235,7 @@ export default function RegistroPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-viridian hover:bg-viridian/90 text-white font-medium"
+                className="w-full h-11 bg-viridian hover:bg-viridian/90 text-black font-medium"
                 disabled={isLoading}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

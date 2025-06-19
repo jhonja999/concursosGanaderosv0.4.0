@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create JWT token
-    const token = signToken({
+    const token = await signToken({
       userId: user.id,
       companyId: user.companyId,
       roles: [user.role],
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/", // Ensure cookie is available across all paths
     })
 
     return response

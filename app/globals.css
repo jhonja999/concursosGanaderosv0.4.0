@@ -1,6 +1,7 @@
-/* Importing fonts */
-@import url("https://fonts.googleapis.com/css2?family=Baloo+Tamma+2:wght@400..800&display=swap");
-@import url("https://fonts.googleapis.com/css?family=Offside:400,700");
+/* Importing fonts - Tipografías estandarizadas */
+@import url("https://fonts.googleapis.com/css2?family=Baloo+Tamma+2:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Facundo:wght@400;700&display=swap");
 
 /* Tailwind directives */
 @tailwind base;
@@ -44,6 +45,10 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom font families */
+    --font-heading: "Facundo", "Baloo Tamma 2", sans-serif;
+    --font-body: "Nunito", system-ui, -apple-system, sans-serif;
   }
 
   .dark {
@@ -83,41 +88,117 @@
   }
 
   * {
-    @apply font-sans;
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
   }
 
-  /* Fuente personalizada por tipo de contenido */
-  h1,
-  h2,
-  h3,
-  h4,
-  p,
-  span,
+  /* Tipografía estandarizada por elemento */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  p, span, div {
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
   a {
-    font-family: "Baloo Tamma 2", sans-serif;
+    font-family: var(--font-body);
+    font-weight: 500;
   }
 
   button {
-    font-family: "Offside", sans-serif;
+    font-family: var(--font-body);
+    font-weight: 600;
   }
 
-  input,
-  textarea {
-    font-family: sans-serif;
+  input, textarea, select {
+    font-family: var(--font-body);
+    font-weight: 400;
+  }
+
+  /* Estilos especiales para navegación */
+  nav a {
+    font-family: var(--font-body);
+    font-weight: 500;
   }
 }
 
-/* Utilities */
+/* Typography utility classes */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
+  /* Font family utilities */
+  .font-facundo {
+    font-family: var(--font-heading);
+  }
+
+  .font-nunito {
+    font-family: var(--font-body);
+  }
+
+  /* Font weight utilities for headings */
+  .heading-light {
+    font-family: var(--font-heading);
+    font-weight: 400;
+  }
+
+  .heading-normal {
+    font-family: var(--font-heading);
+    font-weight: 500;
+  }
+
+  .heading-medium {
+    font-family: var(--font-heading);
+    font-weight: 600;
+  }
+
+  .heading-bold {
+    font-family: var(--font-heading);
+    font-weight: 700;
+  }
+
+  .heading-extrabold {
+    font-family: var(--font-heading);
+    font-weight: 800;
+  }
+
+  /* Body text utilities */
+  .body-light {
+    font-family: var(--font-body);
+    font-weight: 300;
+  }
+
+  .body-normal {
+    font-family: var(--font-body);
+    font-weight: 400;
+  }
+
+  .body-medium {
+    font-family: var(--font-body);
+    font-weight: 500;
+  }
+
+  .body-semibold {
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+
+  .body-bold {
+    font-family: var(--font-body);
+    font-weight: 700;
+  }
+
+  /* Animation utilities */
   .animate-fade-in {
     animation: fadeIn 1.5s ease-out forwards;
   }
@@ -183,8 +264,7 @@
 }
 
 @keyframes pulse {
-  0%,
-  100% {
+  0%, 100% {
     opacity: 1;
   }
   50% {
@@ -192,58 +272,113 @@
   }
 }
 
+/* Component styles */
+@layer components {
+  /* Form styles */
+  .form-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500;
+    font-family: var(--font-body);
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+    font-family: var(--font-body);
+    font-weight: 500;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-md font-semibold transition-all duration-200;
+    font-family: var(--font-body);
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-md font-semibold transition-all duration-200;
+    font-family: var(--font-body);
+  }
+
+  .btn-outline {
+    @apply border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white px-6 py-3 rounded-md font-semibold transition-all duration-200;
+    font-family: var(--font-body);
+  }
+
+  /* Card styles */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .card-pricing {
+    @apply bg-white rounded-lg shadow-lg border-2 p-6 transition-all duration-300;
+  }
+
+  .card-pricing:hover {
+    @apply shadow-xl border-emerald-300;
+  }
+
+  /* Header styles */
+  .header-gradient {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  }
+
+  /* Loading states */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600;
+  }
+
+  /* Badge styles */
+  .badge-primary {
+    @apply bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium;
+    font-family: var(--font-body);
+  }
+
+  .badge-secondary {
+    @apply bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-medium border border-emerald-200;
+    font-family: var(--font-body);
+  }
+
+  .badge-gradient {
+    @apply bg-gradient-to-r from-emerald-500 to-green-500 text-white px-3 py-1 rounded-full text-sm font-medium;
+    font-family: var(--font-body);
+  }
+}
+
 /* Extra Styles */
 .mask-gradient-b {
   mask-image: linear-gradient(to bottom, black 86%, rgba(0, 0, 0, 0) 96%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 86%, rgba(0, 0, 0, 0) 96%, transparent 100%);
-  transition: mask-image 0.4s ease-in-out; /* Transición suave de la máscara */
-}
-
-/* Personalized styles for the project */
-.font-facundo {
-  font-family: "Facundo", serif;
-}
-
-.font-nunito {
-  font-family: "Nunito", sans-serif;
-}
-
-/* Styles for forms */
-.form-input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary;
-}
-
-.form-label {
-  @apply block text-sm font-medium text-gray-700 mb-1;
-}
-
-/* Styles for custom buttons */
-.btn-primary {
-  @apply bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium transition-colors;
-}
-
-.btn-secondary {
-  @apply bg-secondary hover:bg-secondary/90 text-secondary-foreground px-4 py-2 rounded-md font-medium transition-colors;
-}
-
-/* Styles for cards */
-.card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
-}
-
-/* Styles for the header */
-.header-gradient {
-  background: linear-gradient(135deg, #148766 0%, #22c55e 100%);
-}
-
-/* Styles for loading states */
-.loading-spinner {
-  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary;
+  transition: mask-image 0.4s ease-in-out;
 }
 
 /* Responsive utilities */
 @media (max-width: 640px) {
   .mobile-padding {
     @apply px-4;
+  }
+  
+  /* Adjust font sizes for mobile */
+  h1 {
+    @apply text-4xl;
+  }
+  
+  h2 {
+    @apply text-3xl;
+  }
+  
+  h3 {
+    @apply text-2xl;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    @apply text-3xl;
+  }
+  
+  h2 {
+    @apply text-2xl;
+  }
+  
+  .btn-primary, .btn-secondary, .btn-outline {
+    @apply px-4 py-2 text-sm;
   }
 }
