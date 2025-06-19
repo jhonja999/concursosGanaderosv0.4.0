@@ -7,8 +7,14 @@ export async function middleware(request: NextRequest) {
 
   console.log("Middleware running for:", pathname)
 
-  // Rutas protegidas
-  const protectedRoutes = ["/dashboard", "/admin"]
+  // Permitir acceso libre a rutas de administración
+  if (pathname.startsWith("/admin")) {
+    console.log("Admin route - allowing access without authentication")
+    return NextResponse.next()
+  }
+
+  // Rutas protegidas solo para dashboard regular
+  const protectedRoutes = ["/dashboard"]
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
 
   if (!isProtectedRoute) {
@@ -16,7 +22,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Verificar token
+  // Verificar token solo para dashboard regular
   const token = request.cookies.get("auth-token")?.value
   console.log("Token found:", !!token)
 
