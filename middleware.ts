@@ -9,7 +9,6 @@ export async function middleware(request: NextRequest) {
 
   // Rutas protegidas
   const protectedRoutes = ["/dashboard", "/admin"]
-  const adminRoutes = ["/admin"]
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
 
@@ -18,7 +17,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Verificar token
+  // Verificar token solo para dashboard regular
   const token = request.cookies.get("auth-token")?.value
   console.log("Token found:", !!token)
 
