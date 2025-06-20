@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyToken } from "@/lib/jwt"
 import { prisma } from "@/lib/prisma"
+import { verifyToken } from "@/lib/jwt"
 import { sendEmail } from "@/lib/email"
 import { emailTemplates } from "@/lib/email-templates"
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Verificar autenticación y rol SUPERADMIN
     const token = request.cookies.get("token")?.value
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
@@ -17,20 +16,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
 
+    // Verificar que el usuario sea SUPERADMIN
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
     })
 
     if (!user || user.role !== "SUPERADMIN") {
-      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
+      return NextResponse.json({ error: "No tienes permisos para esta acción" }, { status: 403 })
     }
 
     const { action, notas } = await request.json()
-    const requestId = params.id
 
-    // Obtener la solicitud
+    if (!["approve", "reject"].includes(action)) {
+      return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
+    }
+
     const companyRequest = await prisma.companyRequest.findUnique({
-      where: { id: requestId },
+      where: { id: params.id },
     })
 
     if (!companyRequest) {
@@ -42,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     if (action === "approve") {
-      // Aprobar solicitud y crear compañía
+      // Aprobar solicitud: crear compañía y suscripción
       const result = await prisma.$transaction(async (tx) => {
         // Crear compañía
         const company = await tx.company.create({
@@ -55,6 +57,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             website: companyRequest.website,
             ubicacion: companyRequest.ubicacion,
             tipoOrganizacion: companyRequest.tipoOrganizacion,
+            isActive: true,
           },
         })
 
@@ -64,31 +67,27 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             companyId: company.id,
             plan: "BASICO",
             status: "ACTIVO",
-            maxConcursos: 5,
+            maxUsers: 5,
+            maxStorage: 1000,
+            maxConcursos: 10,
             fechaExpiracion: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
-            precio: 500000, // $500,000 COP
+            precio: 0, // Gratis el primer año
           },
         })
 
-        // Buscar usuario por email y actualizarlo
-        const requestUser = await tx.user.findUnique({
+        // Actualizar usuario: asignar compañía y cambiar rol
+        const updatedUser = await tx.user.update({
           where: { email: companyRequest.email },
+          data: {
+            companyId: company.id,
+            role: "CONCURSO_ADMIN",
+            contestAccess: true,
+          },
         })
-
-        if (requestUser) {
-          // Actualizar usuario existente
-          await tx.user.update({
-            where: { id: requestUser.id },
-            data: {
-              role: "CONCURSO_ADMIN",
-              companyId: company.id,
-            },
-          })
-        }
 
         // Actualizar solicitud
         const updatedRequest = await tx.companyRequest.update({
-          where: { id: requestId },
+          where: { id: params.id },
           data: {
             status: "APROBADA",
             notas,
@@ -98,12 +97,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           },
         })
 
-        return { company, subscription, updatedRequest, requestUser }
+        return { company, subscription, user: updatedUser, request: updatedRequest }
       })
 
       // Enviar email de aprobación
       try {
-        const approvalTemplate = emailTemplates.companyRequestApproved(
+        const approvalTemplate = emailTemplates.companyApprovedEmail(
           `${companyRequest.nombre} ${companyRequest.apellido}`,
           companyRequest.nombreCompania,
         )
@@ -115,11 +114,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({
         message: "Solicitud aprobada exitosamente",
         company: result.company,
+        subscription: result.subscription,
       })
-    } else if (action === "reject") {
+    } else {
       // Rechazar solicitud
       const updatedRequest = await prisma.companyRequest.update({
-        where: { id: requestId },
+        where: { id: params.id },
         data: {
           status: "RECHAZADA",
           notas,
@@ -130,7 +130,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
       // Enviar email de rechazo
       try {
-        const rejectionTemplate = emailTemplates.companyRequestRejected(
+        const rejectionTemplate = emailTemplates.companyRejectedEmail(
           `${companyRequest.nombre} ${companyRequest.apellido}`,
           companyRequest.nombreCompania,
           notas || "No se proporcionaron detalles adicionales.",
@@ -144,62 +144,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         message: "Solicitud rechazada",
         request: updatedRequest,
       })
-    } else {
-      return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
     }
   } catch (error) {
-    console.error("Error procesando solicitud:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
-  }
-}
-
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    // Verificar autenticación y rol SUPERADMIN
-    const token = request.cookies.get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-    })
-
-    if (!user || user.role !== "SUPERADMIN") {
-      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
-    }
-
-    const companyRequest = await prisma.companyRequest.findUnique({
-      where: { id: params.id },
-      include: {
-        reviewedBy: {
-          select: {
-            nombre: true,
-            apellido: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            nombre: true,
-            slug: true,
-          },
-        },
-      },
-    })
-
-    if (!companyRequest) {
-      return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 })
-    }
-
-    return NextResponse.json({ companyRequest })
-  } catch (error) {
-    console.error("Error obteniendo solicitud:", error)
+    console.error("Error processing company request:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

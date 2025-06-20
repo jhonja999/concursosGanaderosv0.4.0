@@ -92,17 +92,23 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-body);
   }
 
   /* Tipografía estandarizada por elemento */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
     font-weight: 700;
     line-height: 1.2;
   }
 
-  p, span, div {
+  p,
+  span,
+  div {
     font-family: var(--font-body);
     font-weight: 400;
     line-height: 1.6;
@@ -118,7 +124,9 @@
     font-weight: 600;
   }
 
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-family: var(--font-body);
     font-weight: 400;
   }
@@ -263,7 +271,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -353,16 +362,16 @@
   .mobile-padding {
     @apply px-4;
   }
-  
+
   /* Adjust font sizes for mobile */
   h1 {
     @apply text-4xl;
   }
-  
+
   h2 {
     @apply text-3xl;
   }
-  
+
   h3 {
     @apply text-2xl;
   }
@@ -372,12 +381,14 @@
   h1 {
     @apply text-3xl;
   }
-  
+
   h2 {
     @apply text-2xl;
   }
-  
-  .btn-primary, .btn-secondary, .btn-outline {
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
     @apply px-4 py-2 text-sm;
   }
 }

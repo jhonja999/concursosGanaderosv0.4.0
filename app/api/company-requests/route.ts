@@ -1,12 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyToken } from "@/lib/jwt"
 import { prisma } from "@/lib/prisma"
-import { sendEmail } from "@/lib/email"
-import { emailTemplates } from "@/lib/email-templates"
+import { verifyToken } from "@/lib/jwt"
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.cookies.get("token")?.value
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Obtener solicitudes del usuario actual
+    const requests = await prisma.companyRequest.findMany({
+      where: {
+        email: decoded.email,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
+    return NextResponse.json(requests)
+  } catch (error) {
+    console.error("Error fetching company requests:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación
     const token = request.cookies.get("token")?.value
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
@@ -26,32 +52,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
-    // Verificar que el usuario no tenga ya una compañía
+    // Si el usuario ya tiene compañía, no puede solicitar otra
     if (user.companyId) {
       return NextResponse.json({ error: "Ya tienes una compañía asignada" }, { status: 400 })
     }
 
-    // Verificar que no tenga una solicitud pendiente
-    const existingRequest = await prisma.companyRequest.findUnique({
-      where: { email: user.email },
+    const { nombreCompania, descripcionCompania, tipoOrganizacion, ubicacion, website, motivacion, experiencia } =
+      await request.json()
+
+    // Validar campos requeridos
+    if (!nombreCompania || !motivacion) {
+      return NextResponse.json({ error: "Nombre de compañía y motivación son requeridos" }, { status: 400 })
+    }
+
+    // Verificar si ya existe una solicitud pendiente para este usuario
+    const existingRequest = await prisma.companyRequest.findFirst({
+      where: {
+        email: user.email,
+        status: {
+          in: ["PENDIENTE", "EN_REVISION"],
+        },
+      },
     })
 
-    if (existingRequest && existingRequest.status === "PENDIENTE") {
+    if (existingRequest) {
       return NextResponse.json({ error: "Ya tienes una solicitud pendiente" }, { status: 400 })
     }
 
-    const {
-      nombreCompania,
-      descripcionCompania,
-      tipoOrganizacion,
-      ubicacion,
-      website,
-      motivacion,
-      experiencia,
-      documentos = [],
-    } = await request.json()
-
-    // Crear solicitud de compañía
+    // Crear la solicitud
     const companyRequest = await prisma.companyRequest.create({
       data: {
         nombre: user.nombre,
@@ -65,77 +93,16 @@ export async function POST(request: NextRequest) {
         website,
         motivacion,
         experiencia,
-        documentos,
         status: "PENDIENTE",
       },
     })
 
-    // Notificar a todos los SUPERADMIN
-    const superAdmins = await prisma.user.findMany({
-      where: { role: "SUPERADMIN" },
-    })
-
-    for (const admin of superAdmins) {
-      try {
-        const notificationTemplate = emailTemplates.newCompanyRequestNotification(
-          `${admin.nombre} ${admin.apellido}`,
-          `${user.nombre} ${user.apellido}`,
-          nombreCompania,
-          companyRequest.id,
-        )
-        await sendEmail(admin.email, notificationTemplate)
-      } catch (emailError) {
-        console.error("Error enviando notificación:", emailError)
-      }
-    }
-
     return NextResponse.json({
       message: "Solicitud enviada exitosamente",
-      requestId: companyRequest.id,
+      request: companyRequest,
     })
   } catch (error) {
-    console.error("Error creando solicitud:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    // Verificar autenticación
-    const token = request.cookies.get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
-    }
-
-    // Obtener solicitud del usuario actual
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
-    }
-
-    const companyRequest = await prisma.companyRequest.findUnique({
-      where: { email: user.email },
-      include: {
-        reviewedBy: {
-          select: {
-            nombre: true,
-            apellido: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json({ companyRequest })
-  } catch (error) {
-    console.error("Error obteniendo solicitud:", error)
+    console.error("Error creating company request:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
