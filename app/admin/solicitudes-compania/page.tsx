@@ -76,7 +76,6 @@ export default function SolicitudesCompaniaPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [reviewNotes, setReviewNotes] = useState("")
-  const [activeTab, setActiveTab] = useState("pending")
 
   useEffect(() => {
     fetchRequests()
@@ -90,15 +89,31 @@ export default function SolicitudesCompaniaPage() {
     try {
       setIsLoading(true)
       const response = await fetch("/api/admin/company-requests")
+
       if (response.ok) {
         const data = await response.json()
-        setRequests(data || [])
+        console.log("📋 Datos recibidos:", data)
+
+        // Asegurar que siempre tengamos un array
+        let requestsArray: CompanyRequest[] = []
+
+        if (data && Array.isArray(data.requests)) {
+          requestsArray = data.requests
+        } else if (data && Array.isArray(data)) {
+          requestsArray = data
+        } else {
+          console.warn("⚠️ Formato de datos inesperado:", data)
+          requestsArray = []
+        }
+
+        console.log("✅ Requests procesados:", requestsArray)
+        setRequests(requestsArray)
       } else {
-        console.error("Error fetching requests:", response.statusText)
+        console.error("❌ Error en respuesta:", response.status, response.statusText)
         setRequests([])
       }
     } catch (error) {
-      console.error("Error fetching requests:", error)
+      console.error("❌ Error fetching requests:", error)
       setRequests([])
     } finally {
       setIsLoading(false)
@@ -106,15 +121,22 @@ export default function SolicitudesCompaniaPage() {
   }
 
   const filterRequests = () => {
-    let filtered = requests
+    // Asegurar que requests sea un array antes de filtrar
+    if (!Array.isArray(requests)) {
+      console.warn("⚠️ requests no es un array:", requests)
+      setFilteredRequests([])
+      return
+    }
+
+    let filtered = [...requests]
 
     if (searchTerm) {
       filtered = filtered.filter(
         (request) =>
-          request.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.nombreCompania.toLowerCase().includes(searchTerm.toLowerCase()),
+          request.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.nombreCompania?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -171,12 +193,12 @@ export default function SolicitudesCompaniaPage() {
     }
   }
 
-  // Calcular estadísticas
+  // Calcular estadísticas - asegurar que requests sea un array
   const stats = {
-    total: requests.length,
-    pending: requests.filter((r) => r.status === "PENDIENTE").length,
-    approved: requests.filter((r) => r.status === "APROBADA").length,
-    rejected: requests.filter((r) => r.status === "RECHAZADA").length,
+    total: Array.isArray(requests) ? requests.length : 0,
+    pending: Array.isArray(requests) ? requests.filter((r) => r.status === "PENDIENTE").length : 0,
+    approved: Array.isArray(requests) ? requests.filter((r) => r.status === "APROBADA").length : 0,
+    rejected: Array.isArray(requests) ? requests.filter((r) => r.status === "RECHAZADA").length : 0,
   }
 
   if (isLoading) {
@@ -196,8 +218,8 @@ export default function SolicitudesCompaniaPage() {
           <p className="text-muted-foreground">Gestiona las solicitudes para crear nuevas compañías</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={fetchRequests}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={fetchRequests} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Actualizar
           </Button>
         </div>
@@ -296,69 +318,81 @@ export default function SolicitudesCompaniaPage() {
           <CardDescription>Lista de todas las solicitudes de compañía</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Solicitante</TableHead>
-                <TableHead>Compañía Solicitada</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRequests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">
-                        {request.nombre} {request.apellido}
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {request.email}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Building2 className="h-4 w-4" />
-                      <span className="font-medium">{request.nombreCompania}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{request.tipoOrganizacion || "No especificado"}</Badge>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(request.status)}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">{formatDate(request.createdAt)}</div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedRequest(request)
-                            setIsDialogOpen(true)
-                          }}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver detalles
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {filteredRequests.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">No hay solicitudes</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm || statusFilter !== "all"
+                  ? "No se encontraron solicitudes con los filtros aplicados"
+                  : "Aún no hay solicitudes de compañía registradas"}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Solicitante</TableHead>
+                  <TableHead>Compañía Solicitada</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">
+                          {request.nombre} {request.apellido}
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {request.email}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">{request.nombreCompania}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{request.tipoOrganizacion || "No especificado"}</Badge>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(request.status)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">{formatDate(request.createdAt)}</div>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedRequest(request)
+                              setIsDialogOpen(true)
+                            }}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver detalles
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

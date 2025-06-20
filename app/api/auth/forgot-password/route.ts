@@ -77,8 +77,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Crear URL de reset
-    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`
+    // Crear URL de reset - usar múltiples fallbacks para la URL base
+    const baseUrl =
+      process.env.APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : `http://localhost:3000`
+
+    const resetUrl = `${baseUrl}/(auth)/reset-password?token=${token}`
+
+    console.log("Reset URL generada:", resetUrl) // Para debugging
 
     // Enviar email
     const emailTemplate = emailTemplates.passwordReset(resetUrl, `${user.nombre} ${user.apellido}`)

@@ -2,11 +2,12 @@ import nodemailer from "nodemailer"
 
 // Configuración del transporter de Nodemailer con OAuth2
 export const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com", // Specify Gmail SMTP host
+  port: 465, // Standard port for SMTPS
+  secure: true, // Use SSL/TLS
   auth: {
     type: "OAuth2",
     user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD,
     clientId: process.env.OAUTH_CLIENTID,
     clientSecret: process.env.OAUTH_CLIENT_SECRET,
     refreshToken: process.env.OAUTH_REFRESH_TOKEN,
@@ -20,7 +21,7 @@ export const verifyTransporter = async () => {
     console.log("✅ Nodemailer configurado correctamente")
     return true
   } catch (error) {
-    console.error("❌ Error en configuración de Nodemailer:", error)
+    console.error("❌ Error en configuración de Nodemailer:", (error as Error).message) // Cast error to Error
     return false
   }
 }
@@ -174,6 +175,121 @@ export const emailTemplates = {
       </html>
     `,
   }),
+
+  companyApprovedEmail: (userName: string, companyName: string) => ({
+    subject: `¡Tu solicitud de compañía ha sido aprobada! - ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}`,
+    html: `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Solicitud Aprobada</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #148766, #22C55E); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #148766; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🐄 ¡Felicidades! Tu compañía ha sido aprobada</h1>
+            <p>${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</p>
+          </div>
+          <div class="content">
+            <h2>Hola ${userName},</h2>
+            <p>¡Nos complace informarte que tu solicitud para la compañía <strong>${companyName}</strong> ha sido <strong>APROBADA</strong>!</p>
+            <p>Ahora tienes acceso completo a la plataforma para comenzar a organizar tus concursos ganaderos.</p>
+            <div style="text-align: center;">
+              <a href="${process.env.APP_URL}/dashboard" class="button">Ir al Dashboard</a>
+            </div>
+            <p>Si tienes alguna pregunta, no dudes en contactarnos${process.env.SUPPORT_EMAIL ? ` en ${process.env.SUPPORT_EMAIL}` : ""}.</p>
+            <p>Saludos,<br>
+            <strong>Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</strong></p>
+          </div>
+          <div class="footer">
+            <p>© 2024 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Hola ${userName},
+      
+      ¡Nos complace informarte que tu solicitud para la compañía ${companyName} ha sido APROBADA!
+      
+      Ahora tienes acceso completo a la plataforma para comenzar a organizar tus concursos ganaderos.
+      
+      Visita tu dashboard aquí: ${process.env.APP_URL}/dashboard
+      
+      Si tienes alguna pregunta, no dudes en contactarnos${process.env.SUPPORT_EMAIL ? ` en ${process.env.SUPPORT_EMAIL}` : ""}.
+      
+      Saludos,
+      Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}
+    `,
+  }),
+
+  companyRejectedEmail: (userName: string, companyName: string, reason: string) => ({
+    subject: `Actualización de tu solicitud de compañía - ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}`,
+    html: `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Solicitud Rechazada</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #EF4444, #DC2626); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .reason-box { background: #fee2e2; border: 1px solid #ef4444; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ Tu solicitud de compañía ha sido rechazada</h1>
+            <p>${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</p>
+          </div>
+          <div class="content">
+            <h2>Hola ${userName},</h2>
+            <p>Lamentamos informarte que tu solicitud para la compañía <strong>${companyName}</strong> ha sido <strong>RECHAZADA</strong>.</p>
+            <p>La razón proporcionada es la siguiente:</p>
+            <div class="reason-box">
+              <p><strong>Motivo:</strong> ${reason}</p>
+            </div>
+            <p>Si crees que ha habido un error o deseas discutir esto más a fondo, por favor, contacta a nuestro equipo de soporte${process.env.SUPPORT_EMAIL ? ` en ${process.env.SUPPORT_EMAIL}` : ""}.</p>
+            <p>Saludos,<br>
+            <strong>Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</strong></p>
+          </div>
+          <div class="footer">
+            <p>© 2024 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Hola ${userName},
+      
+      Lamentamos informarte que tu solicitud para la compañía ${companyName} ha sido RECHAZADA.
+      
+      La razón proporcionada es la siguiente:
+      Motivo: ${reason}
+      
+      Si crees que ha habido un error o deseas discutir esto más a fondo, por favor, contacta a nuestro equipo de soporte${process.env.SUPPORT_EMAIL ? ` en ${process.env.SUPPORT_EMAIL}` : ""}.
+      
+      Saludos,
+      Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}
+    `,
+  }),
 }
 
 // Función para enviar emails
@@ -191,7 +307,7 @@ export const sendEmail = async (to: string, template: { subject: string; html: s
     console.log("✅ Email enviado:", result.messageId)
     return { success: true, messageId: result.messageId }
   } catch (error) {
-    console.error("❌ Error enviando email:", error)
-    return { success: false, error: error.message }
+    console.error("❌ Error enviando email:", (error as Error).message) // Cast error to Error
+    return { success: false, error: (error as Error).message }
   }
 }

@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    const payload = await verifyToken(token) // Added await here
+    if (!payload || !payload.userId) {
+      // Added check for payload.userId
+      return NextResponse.json({ error: "Token inválido o usuario no encontrado en el token" }, { status: 401 })
     }
 
     const user = await prisma.user.findUnique({

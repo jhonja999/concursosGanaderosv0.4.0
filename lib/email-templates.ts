@@ -6,7 +6,7 @@ interface EmailTemplate {
 
 export const emailTemplates = {
   // Template para reset de contraseña
-  passwordResetEmail: (resetUrl: string, userName: string): EmailTemplate => ({
+  passwordReset: (resetUrl: string, userName: string): EmailTemplate => ({
     subject: `Restablecer contraseña - ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}`,
     html: `
       <!DOCTYPE html>
@@ -23,6 +23,7 @@ export const emailTemplates = {
           .button { display: inline-block; background: #148766; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
           .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .url-box { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; margin: 20px 0; word-break: break-all; font-family: monospace; font-size: 12px; }
         </style>
       </head>
       <body>
@@ -37,6 +38,11 @@ export const emailTemplates = {
             
             <div style="text-align: center;">
               <a href="${resetUrl}" class="button">Restablecer Contraseña</a>
+            </div>
+            
+            <p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+            <div class="url-box">
+              ${resetUrl}
             </div>
             
             <div class="warning">
@@ -106,7 +112,7 @@ export const emailTemplates = {
             </div>
             
             <div style="text-align: center;">
-              <a href="${process.env.APP_URL}/admin/dashboard" class="button">Ir al Panel de Administración</a>
+              <a href="${process.env.APP_URL || "http://localhost:3000"}/admin/dashboard" class="button">Ir al Panel de Administración</a>
             </div>
             
             <p><strong>¡El sistema está listo para funcionar!</strong></p>
@@ -115,7 +121,7 @@ export const emailTemplates = {
       </body>
       </html>
     `,
-    text: `¡Bienvenido ${userName}! Has sido configurado como SUPERADMIN. Accede al panel: ${process.env.APP_URL}/admin/dashboard`,
+    text: `¡Bienvenido ${userName}! Has sido configurado como SUPERADMIN. Accede al panel: ${process.env.APP_URL || "http://localhost:3000"}/admin/dashboard`,
   }),
 
   // Template para usuarios que necesitan aprobación
@@ -158,7 +164,7 @@ export const emailTemplates = {
             </div>
             
             <div style="text-align: center;">
-              <a href="${process.env.APP_URL}/solicitar-compania" class="button">Solicitar Compañía</a>
+              <a href="${process.env.APP_URL || "http://localhost:3000"}/solicitar-compania" class="button">Solicitar Compañía</a>
             </div>
             
             <p>Si tienes preguntas, no dudes en contactarnos.</p>
@@ -167,7 +173,7 @@ export const emailTemplates = {
       </body>
       </html>
     `,
-    text: `¡Hola ${userName}! Tu cuenta fue creada. Solicita tu compañía en: ${process.env.APP_URL}/solicitar-compania`,
+    text: `¡Hola ${userName}! Tu cuenta fue creada. Solicita tu compañía en: ${process.env.APP_URL || "http://localhost:3000"}/solicitar-compania`,
   }),
 
   // Template para compañía aprobada
@@ -212,7 +218,7 @@ export const emailTemplates = {
             </ul>
             
             <div style="text-align: center;">
-              <a href="${process.env.APP_URL}/dashboard" class="button">Ir al Dashboard</a>
+              <a href="${process.env.APP_URL || "http://localhost:3000"}/dashboard" class="button">Ir al Dashboard</a>
             </div>
             
             <p>¡Bienvenido a la plataforma! Estamos emocionados de verte crear concursos increíbles.</p>
@@ -221,7 +227,7 @@ export const emailTemplates = {
       </body>
       </html>
     `,
-    text: `¡Felicidades ${userName}! Tu compañía ${companyName} fue aprobada. Accede: ${process.env.APP_URL}/dashboard`,
+    text: `¡Felicidades ${userName}! Tu compañía ${companyName} fue aprobada. Accede: ${process.env.APP_URL || "http://localhost:3000"}/dashboard`,
   }),
 
   // Template para compañía rechazada
@@ -235,7 +241,7 @@ export const emailTemplates = {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Solicitud Requiere Revisión</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          body { font-family: Arial, sans-serif; line-line: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: linear-gradient(135deg, #148766, #22C55E); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
@@ -270,7 +276,7 @@ export const emailTemplates = {
             </ul>
             
             <div style="text-align: center;">
-              <a href="${process.env.APP_URL}/solicitar-compania" class="button">Enviar Nueva Solicitud</a>
+              <a href="${process.env.APP_URL || "http://localhost:3000"}/solicitar-compania" class="button">Enviar Nueva Solicitud</a>
             </div>
             
             <p>Si tienes preguntas sobre los comentarios, no dudes en contactarnos.</p>
@@ -279,6 +285,6 @@ export const emailTemplates = {
       </body>
       </html>
     `,
-    text: `Hola ${userName}, tu solicitud para ${companyName} requiere revisión. Motivo: ${reason}. Envía una nueva solicitud: ${process.env.APP_URL}/solicitar-compania`,
+    text: `Hola ${userName}, tu solicitud para ${companyName} requiere revisión. Motivo: ${reason}. Envía una nueva solicitud: ${process.env.APP_URL || "http://localhost:3000"}/solicitar-compania`,
   }),
 }

@@ -4,20 +4,21 @@ import { verifyToken } from "@/lib/jwt"
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value
+    const token = request.cookies.get("auth-token")?.value // Corrected cookie name
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    const decoded = await verifyToken(token) // Await the token verification
+    if (!decoded || !decoded.userId) {
+      // Ensure userId exists in payload
+      return NextResponse.json({ error: "Token inválido o incompleto" }, { status: 401 })
     }
 
     // Obtener solicitudes del usuario actual
     const requests = await prisma.companyRequest.findMany({
       where: {
-        email: decoded.email,
+        email: decoded.email, // Assuming email is in the JWT payload
       },
       orderBy: {
         createdAt: "desc",
@@ -33,14 +34,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value
+    const token = request.cookies.get("auth-token")?.value // Corrected cookie name
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    const decoded = await verifyToken(token) // Await the token verification
+    if (!decoded || !decoded.userId) {
+      // Ensure userId exists in payload
+      return NextResponse.json({ error: "Token inválido o incompleto" }, { status: 401 })
     }
 
     // Obtener datos del usuario

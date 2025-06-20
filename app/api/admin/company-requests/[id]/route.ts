@@ -6,23 +6,28 @@ import { emailTemplates } from "@/lib/email-templates"
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const token = request.cookies.get("token")?.value
+    const token = request.cookies.get("auth-token")?.value // Use "auth-token"
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token) // Await the token verification
     if (!decoded) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
 
-    // Verificar que el usuario sea SUPERADMIN
+    // Verificar que el usuario sea SUPERADMIN directamente desde el payload
+    if (!decoded.roles || !Array.isArray(decoded.roles) || !decoded.roles.includes("SUPERADMIN")) {
+      return NextResponse.json({ error: "No tienes permisos para esta acción" }, { status: 403 })
+    }
+
+    // Fetch user only if needed for `reviewedById` later
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
     })
 
-    if (!user || user.role !== "SUPERADMIN") {
-      return NextResponse.json({ error: "No tienes permisos para esta acción" }, { status: 403 })
+    if (!user) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
     const { action, notas } = await request.json()

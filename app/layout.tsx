@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Lo Mejor de Mi Tierra - Concursos Ganaderos",
   description: "Sistema SaaS para gestión de concursos ganaderos",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -18,7 +18,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+      </head>
       <body className={inter.className}>
         {children}
         <Toaster />

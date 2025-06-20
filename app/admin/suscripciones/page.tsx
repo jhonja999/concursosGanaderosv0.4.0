@@ -88,6 +88,11 @@ interface PaymentHistory {
   date: string
   method: string
   transactionId: string
+  company?: {
+    id: string
+    nombre: string
+    email: string
+  } | null
 }
 
 export default function SuscripcionesPage() {
@@ -104,56 +109,75 @@ export default function SuscripcionesPage() {
   const [activeTab, setActiveTab] = useState("subscriptions")
 
   useEffect(() => {
-    fetchSubscriptions()
-    fetchPaymentHistory()
+    fetchAllData()
   }, [])
 
   useEffect(() => {
     filterSubscriptions()
   }, [subscriptions, searchTerm, planFilter, statusFilter])
 
+  const fetchAllData = async () => {
+    setIsLoading(true)
+    try {
+      await Promise.all([fetchSubscriptions(), fetchPaymentHistory()])
+    } catch (error) {
+      console.error("Error fetching data:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const fetchSubscriptions = async () => {
     try {
-      setIsLoading(true)
+      console.log("🔄 Fetching subscriptions...")
       const params = new URLSearchParams()
       if (searchTerm) params.append("search", searchTerm)
       if (planFilter !== "all") params.append("plan", planFilter)
       if (statusFilter !== "all") params.append("status", statusFilter)
 
       const response = await fetch(`/api/admin/subscriptions?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setSubscriptions(data || [])
-      } else {
-        console.error("Error fetching subscriptions:", response.statusText)
-        setSubscriptions([])
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
+
+      const data = await response.json()
+      console.log("✅ Subscriptions fetched:", data)
+
+      // Asegurar que data sea un array
+      const subscriptionsArray = Array.isArray(data) ? data : []
+      setSubscriptions(subscriptionsArray)
     } catch (error) {
-      console.error("Error fetching subscriptions:", error)
+      console.error("❌ Error fetching subscriptions:", error)
       setSubscriptions([])
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const fetchPaymentHistory = async () => {
     try {
+      console.log("🔄 Fetching payment history...")
       const response = await fetch("/api/admin/payments")
-      if (response.ok) {
-        const data = await response.json()
-        setPaymentHistory(data || [])
-      } else {
-        console.error("Error fetching payment history:", response.statusText)
-        setPaymentHistory([])
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
+
+      const data = await response.json()
+      console.log("✅ Payment history fetched:", data)
+
+      // Asegurar que data sea un array
+      const paymentsArray = Array.isArray(data) ? data : []
+      setPaymentHistory(paymentsArray)
     } catch (error) {
-      console.error("Error fetching payment history:", error)
+      console.error("❌ Error fetching payment history:", error)
       setPaymentHistory([])
     }
   }
 
   const filterSubscriptions = () => {
-    let filtered = subscriptions
+    let filtered = [...subscriptions]
 
     if (searchTerm) {
       filtered = filtered.filter(
@@ -210,7 +234,7 @@ export default function SuscripcionesPage() {
       PENDIENTE: { variant: "secondary" as const, text: "Pendiente" },
     }
 
-    const config = variants[status as keyof typeof variants] || variants.PENDIENTE
+    const config = variants[status as keyof typeof variants] || variants.COMPLETADO
     return <Badge variant={config.variant}>{config.text}</Badge>
   }
 
@@ -369,8 +393,8 @@ export default function SuscripcionesPage() {
           <p className="text-muted-foreground">Gestiona planes, pagos, renovaciones y acceso a concursos</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={fetchAllData} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Actualizar
           </Button>
         </div>
@@ -387,7 +411,7 @@ export default function SuscripcionesPage() {
             <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +12.5% vs mes anterior
+              Suscripciones activas
             </div>
           </CardContent>
         </Card>
@@ -512,126 +536,132 @@ export default function SuscripcionesPage() {
               <CardDescription>Lista de todas las suscripciones del sistema</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Compañía</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Uso</TableHead>
-                    <TableHead>Acceso Concursos</TableHead>
-                    <TableHead>Vencimiento</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSubscriptions.map((subscription) => (
-                    <TableRow key={subscription.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {subscription.company.nombre}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{subscription.company.email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getPlanBadge(subscription.plan)}</TableCell>
-                      <TableCell>
-                        {getStatusBadge(subscription.status)}
-                        {isExpiringSoon(subscription.fechaExpiracion) && (
-                          <Badge variant="outline" className="ml-2 text-orange-600 border-orange-600">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Próximo a vencer
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
+              {filteredSubscriptions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No se encontraron suscripciones</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Compañía</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Uso</TableHead>
+                      <TableHead>Acceso Concursos</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead>Precio</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSubscriptions.map((subscription) => (
+                      <TableRow key={subscription.id}>
+                        <TableCell>
                           <div>
-                            <div className="flex justify-between text-xs">
-                              <span>Concursos</span>
-                              <span>
-                                {subscription.concursosUsados}/{subscription.maxConcursos}
+                            <div className="font-medium flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {subscription.company.nombre}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{subscription.company.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getPlanBadge(subscription.plan)}</TableCell>
+                        <TableCell>
+                          {getStatusBadge(subscription.status)}
+                          {isExpiringSoon(subscription.fechaExpiracion) && (
+                            <Badge variant="outline" className="ml-2 text-orange-600 border-orange-600">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Próximo a vencer
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div>
+                              <div className="flex justify-between text-xs">
+                                <span>Concursos</span>
+                                <span>
+                                  {subscription.concursosUsados}/{subscription.maxConcursos}
+                                </span>
+                              </div>
+                              <Progress
+                                value={(subscription.concursosUsados / subscription.maxConcursos) * 100}
+                                className="h-1"
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={subscription.contestAccessEnabled}
+                                onCheckedChange={(checked) => handleToggleContestAccess(subscription.id, checked)}
+                                disabled={subscription.status !== "ACTIVO"}
+                              />
+                              <span className="text-xs">
+                                {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
                               </span>
                             </div>
-                            <Progress
-                              value={(subscription.concursosUsados / subscription.maxConcursos) * 100}
-                              className="h-1"
-                            />
+                            <div className="text-xs text-muted-foreground">
+                              {subscription.company.users.filter((u) => u.contestAccess && u.isActive).length} de{" "}
+                              {subscription.company.users.filter((u) => u.isActive).length} usuarios
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={subscription.contestAccessEnabled}
-                              onCheckedChange={(checked) => handleToggleContestAccess(subscription.id, checked)}
-                              disabled={subscription.status !== "ACTIVO"}
-                            />
-                            <span className="text-xs">
-                              {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {subscription.company.users.filter((u) => u.contestAccess && u.isActive).length} de{" "}
-                            {subscription.company.users.filter((u) => u.isActive).length} usuarios
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{formatDate(subscription.fechaExpiracion)}</div>
-                        {subscription.autoRenewal && (
-                          <Badge variant="outline" className="text-xs mt-1">
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Auto-renovación
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{formatCurrency(subscription.precio)}</div>
-                        <div className="text-xs text-muted-foreground">{subscription.paymentMethod}</div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedSubscription(subscription)
-                                setIsDialogOpen(true)
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver detalles
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedSubscription(subscription)
-                                setIsAccessDialogOpen(true)
-                              }}
-                            >
-                              <Shield className="mr-2 h-4 w-4" />
-                              Gestionar acceso
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{formatDate(subscription.fechaExpiracion)}</div>
+                          {subscription.autoRenewal && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Auto-renovación
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{formatCurrency(subscription.precio)}</div>
+                          <div className="text-xs text-muted-foreground">{subscription.paymentMethod}</div>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedSubscription(subscription)
+                                  setIsDialogOpen(true)
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver detalles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedSubscription(subscription)
+                                  setIsAccessDialogOpen(true)
+                                }}
+                              >
+                                <Shield className="mr-2 h-4 w-4" />
+                                Gestionar acceso
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -646,137 +676,147 @@ export default function SuscripcionesPage() {
               <CardDescription>Gestiona qué usuarios pueden acceder a las funcionalidades de concursos</CardDescription>
             </CardHeader>
             <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                {subscriptions.map((subscription) => (
-                  <AccordionItem key={subscription.id} value={subscription.id}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center justify-between w-full mr-4">
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-4 w-4" />
-                          <span className="font-medium">{subscription.company.nombre}</span>
-                          {getPlanBadge(subscription.plan)}
-                          {getStatusBadge(subscription.status)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={subscription.contestAccessEnabled ? "default" : "secondary"}>
-                            {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {subscription.company.users.filter((u) => u.contestAccess && u.isActive).length}/
-                            {subscription.company.users.filter((u) => u.isActive).length} usuarios
-                          </span>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-4 pt-4">
-                        {/* Global Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                          <div>
-                            <h4 className="font-medium">Acceso Global a Concursos</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Habilitar o deshabilitar el acceso a concursos para toda la compañía
-                            </p>
+              {subscriptions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No hay suscripciones para gestionar</p>
+                </div>
+              ) : (
+                <Accordion type="single" collapsible className="w-full">
+                  {subscriptions.map((subscription) => (
+                    <AccordionItem key={subscription.id} value={subscription.id}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center justify-between w-full mr-4">
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-4 w-4" />
+                            <span className="font-medium">{subscription.company.nombre}</span>
+                            {getPlanBadge(subscription.plan)}
+                            {getStatusBadge(subscription.status)}
                           </div>
-                          <Switch
-                            checked={subscription.contestAccessEnabled}
-                            onCheckedChange={(checked) => handleToggleContestAccess(subscription.id, checked)}
-                            disabled={subscription.status !== "ACTIVO"}
-                          />
-                        </div>
-
-                        {/* Bulk Actions */}
-                        {subscription.contestAccessEnabled && subscription.company.users.length > 0 && (
-                          <div className="flex items-center gap-2 p-4 border rounded-lg">
-                            <span className="text-sm font-medium">Acciones masivas:</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleBulkToggleUsers(
-                                  subscription.id,
-                                  subscription.company.users.filter((u) => u.isActive).map((u) => u.id),
-                                  true,
-                                )
-                              }
-                            >
-                              <ShieldCheck className="h-4 w-4 mr-1" />
-                              Permitir todos
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleBulkToggleUsers(
-                                  subscription.id,
-                                  subscription.company.users.filter((u) => u.isActive).map((u) => u.id),
-                                  false,
-                                )
-                              }
-                            >
-                              <ShieldX className="h-4 w-4 mr-1" />
-                              Bloquear todos
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={subscription.contestAccessEnabled ? "default" : "secondary"}>
+                              {subscription.contestAccessEnabled ? "Habilitado" : "Deshabilitado"}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {subscription.company.users.filter((u) => u.contestAccess && u.isActive).length}/
+                              {subscription.company.users.filter((u) => u.isActive).length} usuarios
+                            </span>
                           </div>
-                        )}
-
-                        {/* Users List */}
-                        <div className="space-y-2">
-                          <h4 className="font-medium">Usuarios ({subscription.company.users.length})</h4>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Usuario</TableHead>
-                                <TableHead>Rol</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead>Último Acceso</TableHead>
-                                <TableHead>Acceso a Concursos</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {subscription.company.users.map((user) => (
-                                <TableRow key={user.id}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">
-                                        {user.nombre} {user.apellido}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>{getRoleBadge(user.role)}</TableCell>
-                                  <TableCell>
-                                    <Badge variant={user.isActive ? "default" : "secondary"}>
-                                      {user.isActive ? "Activo" : "Inactivo"}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="text-sm">
-                                      {user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-3">
-                                      <Switch
-                                        checked={user.contestAccess}
-                                        onCheckedChange={(checked) =>
-                                          handleToggleUserContestAccess(subscription.id, user.id, checked)
-                                        }
-                                        disabled={!subscription.contestAccessEnabled || !user.isActive}
-                                      />
-                                      {getAccessBadge(user.contestAccess)}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
                         </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4 pt-4">
+                          {/* Global Toggle */}
+                          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                            <div>
+                              <h4 className="font-medium">Acceso Global a Concursos</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Habilitar o deshabilitar el acceso a concursos para toda la compañía
+                              </p>
+                            </div>
+                            <Switch
+                              checked={subscription.contestAccessEnabled}
+                              onCheckedChange={(checked) => handleToggleContestAccess(subscription.id, checked)}
+                              disabled={subscription.status !== "ACTIVO"}
+                            />
+                          </div>
+
+                          {/* Bulk Actions */}
+                          {subscription.contestAccessEnabled && subscription.company.users.length > 0 && (
+                            <div className="flex items-center gap-2 p-4 border rounded-lg">
+                              <span className="text-sm font-medium">Acciones masivas:</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleBulkToggleUsers(
+                                    subscription.id,
+                                    subscription.company.users.filter((u) => u.isActive).map((u) => u.id),
+                                    true,
+                                  )
+                                }
+                              >
+                                <ShieldCheck className="h-4 w-4 mr-1" />
+                                Permitir todos
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleBulkToggleUsers(
+                                    subscription.id,
+                                    subscription.company.users.filter((u) => u.isActive).map((u) => u.id),
+                                    false,
+                                  )
+                                }
+                              >
+                                <ShieldX className="h-4 w-4 mr-1" />
+                                Bloquear todos
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Users List */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium">Usuarios ({subscription.company.users.length})</h4>
+                            {subscription.company.users.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No hay usuarios en esta compañía</p>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Usuario</TableHead>
+                                    <TableHead>Rol</TableHead>
+                                    <TableHead>Estado</TableHead>
+                                    <TableHead>Último Acceso</TableHead>
+                                    <TableHead>Acceso a Concursos</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {subscription.company.users.map((user) => (
+                                    <TableRow key={user.id}>
+                                      <TableCell>
+                                        <div>
+                                          <div className="font-medium">
+                                            {user.nombre} {user.apellido}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={user.isActive ? "default" : "secondary"}>
+                                          {user.isActive ? "Activo" : "Inactivo"}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="text-sm">
+                                          {user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-3">
+                                          <Switch
+                                            checked={user.contestAccess}
+                                            onCheckedChange={(checked) =>
+                                              handleToggleUserContestAccess(subscription.id, user.id, checked)
+                                            }
+                                            disabled={!subscription.contestAccessEnabled || !user.isActive}
+                                          />
+                                          {getAccessBadge(user.contestAccess)}
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -788,33 +828,36 @@ export default function SuscripcionesPage() {
               <CardDescription>Registro de todos los pagos y transacciones</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Compañía</TableHead>
-                    <TableHead>Monto</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>ID Transacción</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentHistory.map((payment) => {
-                    const subscription = subscriptions.find((s) => s.id === payment.subscriptionId)
-                    return (
+              {paymentHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No hay historial de pagos disponible</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Compañía</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Método</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>ID Transacción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentHistory.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell>{formatDate(payment.date)}</TableCell>
-                        <TableCell>{subscription?.company.nombre || "N/A"}</TableCell>
+                        <TableCell>{payment.company?.nombre || "N/A"}</TableCell>
                         <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>{payment.method}</TableCell>
                         <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
                         <TableCell className="font-mono text-sm">{payment.transactionId}</TableCell>
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1177,61 +1220,65 @@ export default function SuscripcionesPage() {
               {/* Users Table */}
               <div className="space-y-4">
                 <h4 className="font-medium">Usuarios ({selectedSubscription.company.users.length})</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Rol</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Último Acceso</TableHead>
-                      <TableHead>Acceso a Concursos</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedSubscription.company.users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {user.nombre} {user.apellido}
-                            </div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
-                        <TableCell>
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Activo" : "Inactivo"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              checked={user.contestAccess}
-                              onCheckedChange={(checked) => {
-                                handleToggleUserContestAccess(selectedSubscription.id, user.id, checked)
-                                setSelectedSubscription({
-                                  ...selectedSubscription,
-                                  company: {
-                                    ...selectedSubscription.company,
-                                    users: selectedSubscription.company.users.map((u) =>
-                                      u.id === user.id ? { ...u, contestAccess: checked } : u,
-                                    ),
-                                  },
-                                })
-                              }}
-                              disabled={!selectedSubscription.contestAccessEnabled || !user.isActive}
-                            />
-                            {getAccessBadge(user.contestAccess)}
-                          </div>
-                        </TableCell>
+                {selectedSubscription.company.users.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay usuarios en esta compañía</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Último Acceso</TableHead>
+                        <TableHead>Acceso a Concursos</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedSubscription.company.users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">
+                                {user.nombre} {user.apellido}
+                              </div>
+                              <div className="text-sm text-muted-foreground">{user.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getRoleBadge(user.role)}</TableCell>
+                          <TableCell>
+                            <Badge variant={user.isActive ? "default" : "secondary"}>
+                              {user.isActive ? "Activo" : "Inactivo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{user.lastLogin ? formatDate(user.lastLogin) : "Nunca"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Switch
+                                checked={user.contestAccess}
+                                onCheckedChange={(checked) => {
+                                  handleToggleUserContestAccess(selectedSubscription.id, user.id, checked)
+                                  setSelectedSubscription({
+                                    ...selectedSubscription,
+                                    company: {
+                                      ...selectedSubscription.company,
+                                      users: selectedSubscription.company.users.map((u) =>
+                                        u.id === user.id ? { ...u, contestAccess: checked } : u,
+                                      ),
+                                    },
+                                  })
+                                }}
+                                disabled={!selectedSubscription.contestAccessEnabled || !user.isActive}
+                              />
+                              {getAccessBadge(user.contestAccess)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </div>
           )}

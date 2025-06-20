@@ -73,6 +73,12 @@ interface RecentActivity {
   status: "success" | "warning" | "error" | "info"
 }
 
+interface DistributionData {
+  name: string
+  value: number
+  color: string
+}
+
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
 export default function AdminDashboard() {
@@ -80,21 +86,28 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState<ChartData[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+  const [distributionData, setDistributionData] = useState<DistributionData[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardData()
+    // Usar una sola función para cargar todos los datos
+    fetchAllDashboardData()
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchAllDashboardData = async () => {
     try {
-      const [statsRes, chartsRes, alertsRes, activityRes] = await Promise.all([
+      setIsLoading(true)
+
+      // Hacer todas las llamadas en paralelo pero con una sola verificación de token
+      const [statsRes, chartsRes, alertsRes, activityRes, distributionRes] = await Promise.all([
         fetch("/api/admin/dashboard/stats"),
         fetch("/api/admin/dashboard/charts"),
         fetch("/api/admin/dashboard/alerts"),
         fetch("/api/admin/dashboard/activity"),
+        fetch("/api/admin/dashboard/distribution"),
       ])
 
+      // Procesar respuestas
       if (statsRes.ok) {
         const statsData = await statsRes.json()
         setStats(statsData)
@@ -102,17 +115,24 @@ export default function AdminDashboard() {
 
       if (chartsRes.ok) {
         const chartsData = await chartsRes.json()
-        setChartData(chartsData)
+        if (Array.isArray(chartsData)) {
+          setChartData(chartsData)
+        }
       }
 
       if (alertsRes.ok) {
         const alertsData = await alertsRes.json()
-        setAlerts(alertsData)
+        setAlerts(Array.isArray(alertsData) ? alertsData : [])
       }
 
       if (activityRes.ok) {
         const activityData = await activityRes.json()
-        setRecentActivity(activityData)
+        setRecentActivity(Array.isArray(activityData) ? activityData : [])
+      }
+
+      if (distributionRes.ok) {
+        const distributionData = await distributionRes.json()
+        setDistributionData(Array.isArray(distributionData) ? distributionData : [])
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
@@ -156,11 +176,11 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-none space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Panel Administrativo</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Panel Administrativo</h1>
           <p className="text-muted-foreground">Resumen general del sistema y métricas clave</p>
         </div>
         <div className="flex items-center gap-2">
@@ -168,47 +188,55 @@ export default function AdminDashboard() {
             <Activity className="h-3 w-3 mr-1" />
             Sistema Activo
           </Badge>
+          <Button onClick={fetchAllDashboardData} variant="outline" size="sm">
+            Actualizar
+          </Button>
         </div>
       </div>
 
       {/* KPIs Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Usuarios Totales</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalUsers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(stats?.totalUsers || 0).toLocaleString()}</div>
             <div className="flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+{stats?.userGrowth}% vs mes anterior
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+{stats?.userGrowth || 0}% vs mes anterior
             </div>
-            <Progress value={(stats?.activeUsers! / stats?.totalUsers!) * 100} className="mt-2" />
+            <Progress value={stats?.totalUsers ? (stats.activeUsers / stats.totalUsers) * 100 : 0} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {stats?.activeUsers} activos ({((stats?.activeUsers! / stats?.totalUsers!) * 100).toFixed(1)}%)
+              {stats?.activeUsers || 0} activos (
+              {stats?.totalUsers ? ((stats.activeUsers / stats.totalUsers) * 100).toFixed(1) : 0}%)
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Compañías</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalCompanies}</div>
+            <div className="text-2xl font-bold">{stats?.totalCompanies || 0}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-              {stats?.activeSubscriptions} con suscripción activa
+              {stats?.activeSubscriptions || 0} con suscripción activa
             </div>
-            <Progress value={(stats?.activeSubscriptions! / stats?.totalCompanies!) * 100} className="mt-2" />
+            <Progress
+              value={stats?.totalCompanies ? (stats.activeSubscriptions / stats.totalCompanies) * 100 : 0}
+              className="mt-2"
+            />
             <p className="text-xs text-muted-foreground mt-1">
-              {((stats?.activeSubscriptions! / stats?.totalCompanies!) * 100).toFixed(1)}% tasa de conversión
+              {stats?.totalCompanies ? ((stats.activeSubscriptions / stats.totalCompanies) * 100).toFixed(1) : 0}% tasa
+              de conversión
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos Mensuales</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -216,7 +244,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats?.monthlyRevenue || 0)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+{stats?.revenueGrowth}% vs mes anterior
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+{stats?.revenueGrowth || 0}% vs mes anterior
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Total acumulado: {formatCurrency(stats?.totalRevenue || 0)}
@@ -224,26 +252,26 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Alertas Pendientes</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats?.expiringSubscriptions}</div>
+            <div className="text-2xl font-bold text-orange-600">{stats?.expiringSubscriptions || 0}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="h-3 w-3 mr-1 text-orange-500" />
               Suscripciones por vencer
             </div>
-            <p className="text-xs text-muted-foreground mt-2">{stats?.pendingRequests} solicitudes pendientes</p>
+            <p className="text-xs text-muted-foreground mt-2">{stats?.pendingRequests || 0} solicitudes pendientes</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts and Alerts */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-3">
         {/* Charts */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2">
           <Tabs defaultValue="growth" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="growth">Crecimiento</TabsTrigger>
@@ -258,16 +286,24 @@ export default function AdminDashboard() {
                   <CardDescription>Evolución mensual de usuarios y suscripciones</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="users" stroke="#8884d8" strokeWidth={2} />
-                      <Line type="monotone" dataKey="subscriptions" stroke="#82ca9d" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="users" stroke="#8884d8" strokeWidth={2} name="Usuarios" />
+                        <Line
+                          type="monotone"
+                          dataKey="subscriptions"
+                          stroke="#82ca9d"
+                          strokeWidth={2}
+                          name="Suscripciones"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -279,15 +315,17 @@ export default function AdminDashboard() {
                   <CardDescription>Evolución de ingresos por suscripciones</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Bar dataKey="revenue" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                        <Bar dataKey="revenue" fill="#8884d8" name="Ingresos" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -299,29 +337,27 @@ export default function AdminDashboard() {
                   <CardDescription>Distribución de suscripciones por tipo de plan</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Básico", value: 45, color: "#0088FE" },
-                          { name: "Profesional", value: 35, color: "#00C49F" },
-                          { name: "Empresarial", value: 20, color: "#FFBB28" },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={distributionData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {distributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -339,10 +375,13 @@ export default function AdminDashboard() {
               </CardTitle>
               <CardDescription>Notificaciones importantes que requieren atención</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[300px] overflow-y-auto">
               {alerts.length > 0 ? (
                 alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                  <div
+                    key={alert.id}
+                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     {getAlertIcon(alert.type)}
                     <div className="flex-1 space-y-1">
                       <p className="text-sm font-medium">{alert.title}</p>
@@ -371,10 +410,13 @@ export default function AdminDashboard() {
               </CardTitle>
               <CardDescription>Últimas acciones en el sistema</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[300px] overflow-y-auto">
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 hover:bg-gray-50 p-2 rounded transition-colors"
+                  >
                     {getActivityIcon(activity.status)}
                     <div className="flex-1 space-y-1">
                       <p className="text-sm">{activity.description}</p>
@@ -401,26 +443,38 @@ export default function AdminDashboard() {
           <CardDescription>Accesos directos a las funciones más utilizadas</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Button asChild className="h-20 flex-col gap-2">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Button asChild className="h-20 flex-col gap-2 cursor-pointer">
               <Link href="/admin/usuarios">
                 <Users className="h-6 w-6" />
                 Gestionar Usuarios
               </Link>
             </Button>
-            <Button asChild variant="outline" className="h-20 flex-col gap-2">
+            <Button
+              asChild
+              variant="outline"
+              className="h-20 flex-col gap-2 cursor-pointer bg-white text-black hover:bg-gray-100"
+            >
               <Link href="/admin/suscripciones">
                 <CreditCard className="h-6 w-6" />
                 Suscripciones
               </Link>
             </Button>
-            <Button asChild variant="outline" className="h-20 flex-col gap-2">
-              <Link href="/admin/company-requests">
+            <Button
+              asChild
+              variant="outline"
+              className="h-20 flex-col gap-2 cursor-pointer bg-white text-black hover:bg-gray-100"
+            >
+              <Link href="/admin/solicitudes-compania">
                 <Building2 className="h-6 w-6" />
                 Solicitudes
               </Link>
             </Button>
-            <Button asChild variant="outline" className="h-20 flex-col gap-2">
+            <Button
+              asChild
+              variant="outline"
+              className="h-20 flex-col gap-2 cursor-pointer bg-white text-black hover:bg-gray-100"
+            >
               <Link href="/admin/reportes">
                 <BarChart3 className="h-6 w-6" />
                 Ver Reportes

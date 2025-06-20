@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
+    const payload = await verifyToken(token) // Await the token verification
     if (!payload) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             users: true,
-            concursos: true,
+            // Removed 'concursos: true' as it's not a valid property for _count.select
+            // If you need to count concursos, you might need a different approach or adjust your Prisma schema.
           },
         },
       },

@@ -10,8 +10,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
-    if (!payload || !payload.roles.includes("SUPERADMIN")) {
+    const payload = await verifyToken(token) // Await the token verification
+    if (!payload || !Array.isArray(payload.roles) || !payload.roles.includes("SUPERADMIN")) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 

@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+provider = "postgresql"
+url      = env("DATABASE_URL")
 }
 
 // =========================================================================
@@ -12,79 +12,79 @@ datasource db {
 // =========================================================================
 
 enum UserRole {
-  SUPERADMIN           // Administrador del sistema
-  CONCURSO_ADMIN       // Administrador de compañía
-  REGISTRADOR          // Registrador de participantes
+SUPERADMIN           // Administrador del sistema
+CONCURSO_ADMIN       // Administrador de compañía
+REGISTRADOR          // Registrador de participantes
 }
 
 enum SubscriptionStatus {
-  ACTIVO
-  EXPIRADO
-  SUSPENDIDO
-  CANCELADO
+ACTIVO
+EXPIRADO
+SUSPENDIDO
+CANCELADO
 }
 
 enum SubscriptionPlan {
-  BASICO
-  PROFESIONAL
-  EMPRESARIAL
+BASICO
+PROFESIONAL
+EMPRESARIAL
 }
 
 enum CompanyRequestStatus {
-  PENDIENTE            // Solicitud enviada, esperando aprobación
-  APROBADA             // Solicitud aprobada, compañía creada
-  RECHAZADA            // Solicitud rechazada
-  EN_REVISION          // En proceso de revisión
+PENDIENTE            // Solicitud enviada, esperando aprobación
+APROBADA             // Solicitud aprobada, compañía creada
+RECHAZADA            // Solicitud rechazada
+EN_REVISION          // En proceso de revisión
 }
 
 enum NotificationType {
-  USER_CREATED         // Usuario creado
-  USER_UPDATED         // Usuario actualizado
-  USER_DELETED         // Usuario eliminado
-  COMPANY_CREATED      // Compañía creada
-  COMPANY_UPDATED      // Compañía actualizada
-  SUBSCRIPTION_CREATED // Suscripción creada
-  SUBSCRIPTION_UPDATED // Suscripción actualizada
-  SUBSCRIPTION_EXPIRED // Suscripción expirada
-  SYSTEM_ALERT         // Alerta del sistema
-  PAYMENT_RECEIVED     // Pago recibido
-  PAYMENT_FAILED       // Pago fallido
+USER_CREATED         // Usuario creado
+USER_UPDATED         // Usuario actualizado
+USER_DELETED         // Usuario eliminado
+COMPANY_CREATED      // Compañía creada
+COMPANY_UPDATED      // Compañía actualizada
+SUBSCRIPTION_CREATED // Suscripción creada
+SUBSCRIPTION_UPDATED // Suscripción actualizada
+SUBSCRIPTION_EXPIRED // Suscripción expirada
+SYSTEM_ALERT         // Alerta del sistema
+PAYMENT_RECEIVED     // Pago recibido
+PAYMENT_FAILED       // Pago fallido
 }
 
 enum NotificationStatus {
-  UNREAD
-  READ
-  ARCHIVED
+UNREAD
+READ
+ARCHIVED
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  nombre    String
-  apellido  String
-  telefono  String?
-  role      UserRole @default(REGISTRADOR)
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
-  isActive  Boolean  @default(true)
-  
-  // Campos adicionales para SUPERADMIN
-  isSuperAdmin Boolean @default(false)   // Flag adicional de seguridad
-  
-  contestAccess   Boolean  @default(false)  // Acceso a funcionalidades de concursos
-  lastLogin       DateTime?                  // Último inicio de sesión
+id        String   @id @default(cuid())
+email     String   @unique
+password  String
+nombre    String
+apellido  String
+telefono  String?
+role      UserRole @default(REGISTRADOR)
+companyId String?
+company   Company? @relation(fields: [companyId], references: [id])
+isActive  Boolean  @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Campos adicionales para SUPERADMIN
+isSuperAdmin Boolean @default(false)   // Flag adicional de seguridad
 
-  // Relaciones esenciales
-  passwordResetTokens     PasswordResetToken[]
-  companyRequestsReviewed CompanyRequest[]
-  notifications           Notification[]
-  auditLogs               AuditLog[]
+contestAccess   Boolean  @default(false)  // Acceso a funcionalidades de concursos
+lastLogin       DateTime?                  // Último inicio de sesión
 
-  @@map("users")
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+// Relaciones esenciales
+passwordResetTokens     PasswordResetToken[]
+companyRequestsReviewed CompanyRequest[]
+notifications           Notification[]
+auditLogs               AuditLog[]
+
+@@map("users")
 }
 
 // =========================================================================
@@ -92,17 +92,17 @@ model User {
 // =========================================================================
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+id        String   @id @default(cuid())
+token     String   @unique
+userId    String
+user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+expiresAt DateTime
+used      Boolean  @default(false)
+createdAt DateTime @default(now())
 
-  @@index([token])
-  @@index([userId])
-  @@map("password_reset_tokens")
+@@index([token])
+@@index([userId])
+@@map("password_reset_tokens")
 }
 
 // =========================================================================
@@ -110,37 +110,37 @@ model PasswordResetToken {
 // =========================================================================
 
 model Company {
-  id          String             @id @default(cuid())
-  nombre      String
-  slug        String             @unique
-  email       String
-  telefono    String?
-  direccion   String?
-  logo        String?
-  descripcion String?
-  website     String?
-  ubicacion   String?
-  isFeatured  Boolean            @default(false)
-  isPublished Boolean            @default(false)
-  isActive    Boolean            @default(true)
-  
-  // Información adicional
-  tipoOrganizacion String?        // Tipo de organización
-  
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+id          String             @id @default(cuid())
+nombre      String
+slug        String             @unique
+email       String
+telefono    String?
+direccion   String?
+logo        String?
+descripcion String?
+website     String?
+ubicacion   String?
+isFeatured  Boolean            @default(false)
+isPublished Boolean            @default(false)
+isActive    Boolean            @default(true)
 
-  // Suscripción
-  subscription   Subscription?
-  subscriptionId String?       @unique
+// Información adicional
+tipoOrganizacion String?        // Tipo de organización
 
-  // Relaciones
-  users     User[]
-  
-  // Solicitud original (si fue creada por solicitud)
-  companyRequest CompanyRequest?
+createdAt   DateTime           @default(now())
+updatedAt   DateTime           @updatedAt
 
-  @@map("companies")
+// Suscripción
+subscription   Subscription?
+subscriptionId String?       @unique
+
+// Relaciones
+users     User[]
+
+// Solicitud original (si fue creada por solicitud)
+companyRequest CompanyRequest?
+
+@@map("companies")
 }
 
 // =========================================================================
@@ -148,29 +148,29 @@ model Company {
 // =========================================================================
 
 model Subscription {
-  id                String             @id @default(cuid())
-  companyId         String             @unique
-  company           Company            @relation(fields: [companyId], references: [id])
-  plan              SubscriptionPlan   @default(BASICO)
-  status            SubscriptionStatus @default(ACTIVO)
-  maxUsers          Int                @default(5)    // Límite de usuarios
-  usersUsed         Int                @default(0)    // Usuarios utilizados
-  maxStorage        Int                @default(1000) // Límite de almacenamiento en MB
-  storageUsed       Int                @default(0)    // Almacenamiento utilizado
-  fechaInicio       DateTime           @default(now())
-  fechaExpiracion   DateTime
-  fechaRenovacion   DateTime?
-  precio            Decimal            @db.Decimal(10, 2)
-  notas             String?
+id                String             @id @default(cuid())
+companyId         String             @unique
+company           Company            @relation(fields: [companyId], references: [id])
+plan              SubscriptionPlan   @default(BASICO)
+status            SubscriptionStatus @default(ACTIVO)
+maxUsers          Int                @default(5)    // Límite de usuarios
+usersUsed         Int                @default(0)    // Usuarios utilizados
+maxStorage        Int                @default(1000) // Límite de almacenamiento en MB
+storageUsed       Int                @default(0)    // Almacenamiento utilizado
+fechaInicio       DateTime           @default(now())
+fechaExpiracion   DateTime
+fechaRenovacion   DateTime?
+precio            Decimal            @db.Decimal(10, 2)
+notas             String?
 
-  maxConcursos         Int                @default(10)   // Límite de concursos
-  concursosUsados      Int                @default(0)    // Concursos utilizados
-  contestAccessEnabled Boolean            @default(true) // Acceso global a concursos habilitado
+maxConcursos         Int                @default(10)   // Límite de concursos
+concursosUsados      Int                @default(0)    // Concursos utilizados
+contestAccessEnabled Boolean            @default(true) // Acceso global a concursos habilitado
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+createdAt         DateTime           @default(now())
+updatedAt         DateTime           @updatedAt
 
-  @@map("subscriptions")
+@@map("subscriptions")
 }
 
 // =========================================================================
@@ -178,44 +178,44 @@ model Subscription {
 // =========================================================================
 
 model CompanyRequest {
-  id                String               @id @default(cuid())
-  // Información del solicitante
-  nombre            String
-  apellido          String
-  email             String               @unique
-  telefono          String?
-  
-  // Información de la compañía solicitada
-  nombreCompania    String
-  descripcionCompania String?
-  tipoOrganizacion  String?              // "Asociación Ganadera", "Cooperativa", etc.
-  ubicacion         String?
-  website           String?
-  
-  // Documentación de soporte
-  documentos        String[]             // URLs de documentos subidos
-  motivacion        String?              // Por qué quiere crear la compañía
-  experiencia       String?              // Experiencia previa organizando eventos
-  
-  // Estado de la solicitud
-  status            CompanyRequestStatus @default(PENDIENTE)
-  notas             String?              // Notas del revisor
-  
-  // Relaciones
-  reviewedById      String?              // SUPERADMIN que revisó
-  reviewedBy        User?                @relation(fields: [reviewedById], references: [id])
-  reviewedAt        DateTime?
-  
-  // Compañía creada (si fue aprobada)
-  companyId         String?              @unique
-  company           Company?             @relation(fields: [companyId], references: [id])
-  
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+id                String               @id @default(cuid())
+// Información del solicitante
+nombre            String
+apellido          String
+email             String               @unique
+telefono          String?
 
-  @@index([status])
-  @@index([email])
-  @@map("company_requests")
+// Información de la compañía solicitada
+nombreCompania    String
+descripcionCompania String?
+tipoOrganizacion  String?              // "Asociación Ganadera", "Cooperativa", etc.
+ubicacion         String?
+website           String?
+
+// Documentación de soporte
+documentos        String[]             // URLs de documentos subidos
+motivacion        String?              // Por qué quiere crear la compañía
+experiencia       String?              // Experiencia previa organizando eventos
+
+// Estado de la solicitud
+status            CompanyRequestStatus @default(PENDIENTE)
+notas             String?              // Notas del revisor
+
+// Relaciones
+reviewedById      String?              // SUPERADMIN que revisó
+reviewedBy        User?                @relation(fields: [reviewedById], references: [id])
+reviewedAt        DateTime?
+
+// Compañía creada (si fue aprobada)
+companyId         String?              @unique
+company           Company?             @relation(fields: [companyId], references: [id])
+
+createdAt         DateTime             @default(now())
+updatedAt         DateTime             @updatedAt
+
+@@index([status])
+@@index([email])
+@@map("company_requests")
 }
 
 // =========================================================================
@@ -223,30 +223,30 @@ model CompanyRequest {
 // =========================================================================
 
 model Notification {
-  id          String             @id @default(cuid())
-  type        NotificationType
-  title       String
-  message     String
-  status      NotificationStatus @default(UNREAD)
-  
-  // Datos adicionales en JSON
-  metadata    Json?              // Información adicional específica del tipo
-  
-  // Usuario destinatario (null = notificación global)
-  userId      String?
-  user        User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Información de contexto
-  entityType  String?            // "user", "company", "subscription", etc.
-  entityId    String?            // ID de la entidad relacionada
-  
-  createdAt   DateTime           @default(now())
-  readAt      DateTime?
-  
-  @@index([userId, status])
-  @@index([type])
-  @@index([createdAt])
-  @@map("notifications")
+id          String             @id @default(cuid())
+type        NotificationType
+title       String
+message     String
+status      NotificationStatus @default(UNREAD)
+
+// Datos adicionales en JSON
+metadata    Json?              // Información adicional específica del tipo
+
+// Usuario destinatario (null = notificación global)
+userId      String?
+user        User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+// Información de contexto
+entityType  String?            // "user", "company", "subscription", etc.
+entityId    String?            // ID de la entidad relacionada
+
+createdAt   DateTime           @default(now())
+readAt      DateTime?
+
+@@index([userId, status])
+@@index([type])
+@@index([createdAt])
+@@map("notifications")
 }
 
 // =========================================================================
@@ -254,35 +254,48 @@ model Notification {
 // =========================================================================
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  action      String   // "CREATE", "UPDATE", "DELETE", etc.
-  entityType  String   // "User", "Company", "Subscription", etc.
-  entityId    String   // ID de la entidad afectada
-  
-  // Datos del cambio
-  oldValues   Json?    // Valores anteriores
-  newValues   Json?    // Valores nuevos
-  
-  // Usuario que realizó la acción
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  // Información adicional
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([entityType, entityId])
-  @@index([userId])
-  @@index([createdAt])
-  @@map("audit_logs")
+id          String   @id @default(cuid())
+action      String   // "CREATE", "UPDATE", "DELETE", etc.
+entityType  String   // "User", "Company", "Subscription", etc.
+entityId    String   // ID de la entidad afectada
+
+// Datos del cambio
+oldValues   Json?    // Valores anteriores
+newValues   Json?    // Valores nuevos
+
+// Usuario que realizó la acción
+userId      String
+user        User     @relation(fields: [userId], references: [id])
+
+// Información adicional
+ipAddress   String?
+userAgent   String?
+
+createdAt   DateTime @default(now())
+
+@@index([entityType, entityId])
+@@index([userId])
+@@index([createdAt])
+@@map("audit_logs")
+}
+// MODELO DE ALERTAS DEL SISTEMA
+
+model Alert {
+id          String   @id @default(cuid())
+type        String   // e.g., "warning", "info", "error"
+title       String
+description String
+date        DateTime @default(now())
+priority    String   // e.g., "high", "medium", "low"
+isActive    Boolean  @default(true)
+createdAt   DateTime @default(now())
+updatedAt   DateTime @updatedAt
+
+@@map("alerts")
 }
 
-// =========================================================================
 // ENUMERACIONES FUTURAS (COMENTADAS PARA EXPANSIÓN)
 // =========================================================================
-
 // enum SexoGanado {
 //   MACHO                // Ganado macho
 //   HEMBRA               // Ganado hembra
@@ -375,11 +388,11 @@ model AuditLog {
 //   sexo        SexoGanado? // Para concursos de ganado
 //   edadMinima  Int?        // Edad mínima en días (opcional)
 //   edadMaxima  Int?        // Edad máxima en días (opcional)
-  
+
 //   // Para concursos de productos
 //   tipoProducto String?    // Ej: "Café Arábica", "Queso Fresco"
 //   criterios    String?    // Criterios de evaluación específicos
-  
+
 //   concursoId  String
 //   concurso    Concurso    @relation(fields: [concursoId], references: [id], onDelete: Cascade)
 //   createdAt   DateTime    @default(now())
@@ -409,7 +422,7 @@ model AuditLog {
 //   company     Company  @relation(fields: [companyId], references: [id])
 //   createdAt   DateTime @default(now())
 //   updatedAt   DateTime @updatedAt
-  
+
 //   // Relaciones futuras
 //   ganado        Ganado[]
 //   participantes Participante[]
@@ -443,11 +456,11 @@ model AuditLog {
 //   isPublished  Boolean     @default(false)
 //   isGanadora   Boolean     @default(false)
 //   premios      String[]
-  
+
 //   // Relación con expositor
 //   expositorId  String?
 //   expositor    Expositor?  @relation(fields: [expositorId], references: [id])
-  
+
 //   createdAt    DateTime    @default(now())
 //   updatedAt    DateTime    @updatedAt
 
@@ -469,22 +482,22 @@ model AuditLog {
 //   images       String[]
 //   videos       String[]
 //   ingredients  String?     @db.Text
-  
+
 //   // Campos específicos para concursos
 //   origen       String?     // Origen del producto
 //   proceso      String?     // Proceso de elaboración
 //   certificaciones String[] // Certificaciones del producto
-  
+
 //   companyId    String      // Pertenece a una compañía
 //   company      Company     @relation(fields: [companyId], references: [id])
 //   categoryId   String?     // Categoría general del producto
 //   expositorId  String?     // Relación con expositor
-  
+
 //   // Relaciones futuras
 //   variants     Variant[]
 //   attributes   Attribute[]
 //   participantes Participante[] // Productos que participan en concursos
-  
+
 //   isFeatured   Boolean     @default(false)
 //   isPublished  Boolean     @default(false)
 //   stock        Int         @default(0)
@@ -507,32 +520,32 @@ model AuditLog {
 // model Participante {
 //   id           String    @id @default(cuid())
 //   numeroFicha  String
-  
+
 //   // Información del participante/expositor
 //   expositorId  String?
 //   expositor    Expositor? @relation(fields: [expositorId], references: [id])
-  
+
 //   // Para compatibilidad con sistema anterior
 //   propietario  String?
 //   telefono     String?
 //   email        String?
-  
+
 //   concursoId   String
 //   concurso     Concurso  @relation(fields: [concursoId], references: [id])
 //   categoriaId  String
 //   categoria    ConcursoCategoria @relation(fields: [categoriaId], references: [id])
-  
+
 //   // Relación polimórfica: puede ser ganado o producto
 //   ganadoId     String?
 //   ganado       Ganado?   @relation(fields: [ganadoId], references: [id])
 //   productId    String?
 //   product      Product?  @relation(fields: [productId], references: [id])
-  
+
 //   // Información de la participación
 //   posicion     Int?      // Posición obtenida
 //   puntaje      Float?    // Puntaje obtenido
 //   observaciones String?
-  
+
 //   registradoPor String
 //   registrador  User      @relation(fields: [registradoPor], references: [id])
 //   createdAt    DateTime  @default(now())

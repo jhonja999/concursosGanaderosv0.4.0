@@ -4,46 +4,59 @@ import { verifyToken } from "@/lib/jwt"
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar que sea SUPERADMIN
     const token = request.cookies.get("auth-token")?.value
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
-    if (!payload || !payload.roles.includes("SUPERADMIN")) {
+    const payload = await verifyToken(token)
+    if (!payload || !Array.isArray(payload.roles) || !payload.roles.includes("SUPERADMIN")) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    // Obtener parámetros de consulta
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search")
     const plan = searchParams.get("plan")
     const status = searchParams.get("status")
 
-    // Construir filtros
+    // Construir filtros dinámicamente
     const where: any = {}
 
-    if (search) {
-      where.company = {
-        OR: [
-          { nombre: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      }
+    if (status && status !== "all") {
+      where.status = status
     }
 
     if (plan && plan !== "all") {
       where.plan = plan
     }
 
-    if (status && status !== "all") {
-      where.status = status
+    // Filtro de búsqueda por nombre de compañía o email
+    if (search) {
+      where.company = {
+        OR: [
+          {
+            nombre: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            email: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        ],
+      }
     }
 
-    // Obtener suscripciones
+    console.log("🔍 Fetching subscriptions with filters:", where)
+
     const subscriptions = await prisma.subscription.findMany({
       where,
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
         company: {
           select: {
@@ -65,31 +78,36 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
     })
 
-    // Formatear suscripciones para incluir campos calculados
-    const formattedSubscriptions = subscriptions.map((sub) => ({
-      ...sub,
-      fechaInicio: sub.fechaInicio.toISOString(),
-      fechaExpiracion: sub.fechaExpiracion.toISOString(),
-      fechaRenovacion: sub.fechaRenovacion?.toISOString(),
-      createdAt: sub.createdAt.toISOString(),
-      updatedAt: sub.updatedAt.toISOString(),
-      precio: Number(sub.precio),
-      usersUsed: sub.company.users.filter((u) => u.isActive).length,
+    console.log(`✅ Found ${subscriptions.length} subscriptions`)
+
+    // Transformar datos para el frontend
+    const transformedSubscriptions = subscriptions.map((sub) => ({
+      id: sub.id,
+      plan: sub.plan,
+      status: sub.status,
+      fechaInicio: sub.fechaInicio?.toISOString() || new Date().toISOString(),
+      fechaExpiracion: sub.fechaExpiracion?.toISOString() || new Date().toISOString(),
+      precio: Number(sub.precio?.toString() || "0"),
+      maxConcursos: sub.maxConcursos || 0,
+      concursosUsados: sub.concursosUsados || 0,
+      autoRenewal: false, // Default value since field doesn't exist
+      paymentMethod: "Tarjeta", // Default value since field doesn't exist
+      lastPayment: sub.updatedAt?.toISOString(), // Use updatedAt as proxy
+      nextPayment: sub.fechaExpiracion?.toISOString(), // Use expiration date
+      contestAccessEnabled: sub.contestAccessEnabled || false,
       company: {
-        ...sub.company,
-        users: sub.company.users.map((user) => ({
-          ...user,
-          lastLogin: user.lastLogin?.toISOString(),
-        })),
+        id: sub.company.id,
+        nombre: sub.company.nombre,
+        email: sub.company.email,
+        users: sub.company.users || [],
       },
     }))
 
-    return NextResponse.json(formattedSubscriptions)
+    return NextResponse.json(transformedSubscriptions)
   } catch (error) {
-    console.error("Error fetching subscriptions:", error)
+    console.error("❌ Error fetching subscriptions:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
