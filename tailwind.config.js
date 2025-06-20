@@ -71,7 +71,7 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-sans)", "sans-serif"],
         baloo: ["Baloo Tamma 2", "sans-serif"],
-        offside: ["Offside", "sans-serif"],
+        nunito: ["Nunito", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

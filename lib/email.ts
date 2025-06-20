@@ -8,7 +8,7 @@ interface EmailOptions {
 
 // Crear transporter con OAuth2
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: "gmail",
     auth: {
       type: "OAuth2",

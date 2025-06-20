@@ -1,75 +1,38 @@
 import Link from "next/link"
-import { Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Crown } from "lucide-react"
 
-interface LogoProps {
-  variant?: "default" | "compact" | "text-only"
+export interface LogoProps {
+  variant?: "default" | "compact"
   size?: "sm" | "md" | "lg"
-  href?: string
+  href?: string | null
   className?: string
-  showText?: boolean
 }
 
-export function Logo({ variant = "default", size = "md", href = "/", className, showText = true }: LogoProps) {
+export function Logo({ variant = "default", size = "md", href = "/", className }: LogoProps) {
   const sizeClasses = {
-    sm: {
-      icon: "size-6",
-      text: "text-lg",
-      container: "gap-2",
-    },
-    md: {
-      icon: "size-8",
-      text: "text-xl",
-      container: "gap-3",
-    },
-    lg: {
-      icon: "size-10",
-      text: "text-2xl",
-      container: "gap-4",
-    },
+    sm: "text-lg",
+    md: "text-xl",
+    lg: "text-2xl",
   }
 
-  const currentSize = sizeClasses[size]
-
-  const LogoContent = () => (
-    <div className={cn("flex items-center font-bold text-black", currentSize.container, className)}>
-      <div
-        className={cn(
-          "flex items-center justify-center rounded-lg bg-viridian text-black",
-          currentSize.icon,
-          variant === "compact" && "rounded-full",
-        )}
-      >
-        <Crown className={cn(variant === "compact" ? "size-3" : "size-4")} />
+  const logoContent = (
+    <div className={cn("font-bold text-emerald-600 flex items-center gap-2", sizeClasses[size], className)}>
+      <div className="w-8 h-8 bg-primary-foreground rounded-lg flex items-center justify-center">
+        <Crown className="text-emerald-600" size={24} />
       </div>
-
-      {showText && variant !== "compact" && (
-        <div className="flex flex-col leading-tight text-black">
-          <span className={cn("font-bold", currentSize.text)}>Lo Mejor de Mi Tierra</span>
-          {variant === "default" && size !== "sm" && (
-            <span className="text-xs text-muted-foreground font-normal">Concursos Ganaderos</span>
-          )}
-        </div>
-      )}
+      {variant === "default" && <span>Lo Mejor de Mi Tierra</span>}
+      {variant === "compact" && <span>LMMT</span>}
     </div>
   )
 
-  if (href) {
-    return (
-      <Link href={href} className="transition-opacity hover:opacity-80">
-        <LogoContent />
-      </Link>
-    )
+  if (href === null) {
+    return logoContent
   }
 
-  return <LogoContent />
-}
-
-// Variantes específicas para casos comunes
-export function LogoCompact({ className, ...props }: Omit<LogoProps, "variant">) {
-  return <Logo variant="compact" showText={false} className={className} {...props} />
-}
-
-export function LogoText({ className, ...props }: Omit<LogoProps, "variant">) {
-  return <Logo variant="text-only" className={className} {...props} />
+  return (
+    <Link href={href} className="no-underline">
+      {logoContent}
+    </Link>
+  )
 }

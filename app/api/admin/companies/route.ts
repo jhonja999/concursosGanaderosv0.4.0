@@ -11,7 +11,11 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = verifyToken(token)
-    if (!payload || !payload.roles.includes("SUPERADMIN")) {
+    if (!payload) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    if (!payload.roles || !Array.isArray(payload.roles) || !payload.roles.includes("SUPERADMIN")) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 

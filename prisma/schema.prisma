@@ -37,6 +37,26 @@ enum CompanyRequestStatus {
   EN_REVISION          // En proceso de revisión
 }
 
+enum NotificationType {
+  USER_CREATED         // Usuario creado
+  USER_UPDATED         // Usuario actualizado
+  USER_DELETED         // Usuario eliminado
+  COMPANY_CREATED      // Compañía creada
+  COMPANY_UPDATED      // Compañía actualizada
+  SUBSCRIPTION_CREATED // Suscripción creada
+  SUBSCRIPTION_UPDATED // Suscripción actualizada
+  SUBSCRIPTION_EXPIRED // Suscripción expirada
+  SYSTEM_ALERT         // Alerta del sistema
+  PAYMENT_RECEIVED     // Pago recibido
+  PAYMENT_FAILED       // Pago fallido
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -52,12 +72,17 @@ model User {
   // Campos adicionales para SUPERADMIN
   isSuperAdmin Boolean @default(false)   // Flag adicional de seguridad
   
+  contestAccess   Boolean  @default(false)  // Acceso a funcionalidades de concursos
+  lastLogin       DateTime?                  // Último inicio de sesión
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relaciones esenciales
   passwordResetTokens     PasswordResetToken[]
   companyRequestsReviewed CompanyRequest[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
 
   @@map("users")
 }
@@ -137,6 +162,11 @@ model Subscription {
   fechaRenovacion   DateTime?
   precio            Decimal            @db.Decimal(10, 2)
   notas             String?
+
+  maxConcursos         Int                @default(10)   // Límite de concursos
+  concursosUsados      Int                @default(0)    // Concursos utilizados
+  contestAccessEnabled Boolean            @default(true) // Acceso global a concursos habilitado
+
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -186,6 +216,67 @@ model CompanyRequest {
   @@index([status])
   @@index([email])
   @@map("company_requests")
+}
+
+// =========================================================================
+// MODELO DE NOTIFICACIONES
+// =========================================================================
+
+model Notification {
+  id          String             @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  status      NotificationStatus @default(UNREAD)
+  
+  // Datos adicionales en JSON
+  metadata    Json?              // Información adicional específica del tipo
+  
+  // Usuario destinatario (null = notificación global)
+  userId      String?
+  user        User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información de contexto
+  entityType  String?            // "user", "company", "subscription", etc.
+  entityId    String?            // ID de la entidad relacionada
+  
+  createdAt   DateTime           @default(now())
+  readAt      DateTime?
+  
+  @@index([userId, status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// =========================================================================
+// MODELO DE AUDITORÍA
+// =========================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // "CREATE", "UPDATE", "DELETE", etc.
+  entityType  String   // "User", "Company", "Subscription", etc.
+  entityId    String   // ID de la entidad afectada
+  
+  // Datos del cambio
+  oldValues   Json?    // Valores anteriores
+  newValues   Json?    // Valores nuevos
+  
+  // Usuario que realizó la acción
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Información adicional
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 // =========================================================================

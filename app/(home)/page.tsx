@@ -23,7 +23,6 @@ export default async function HomePage() {
               <Logo
                 size="md"
                 className="text-white [&>div]:bg-white [&>div]:text-emerald-600"
-                showText={true}
                 href="/"
               />
             </div>
@@ -72,7 +71,7 @@ export default async function HomePage() {
 
         <div className="container mx-auto relative z-20 h-full flex flex-col items-center justify-center text-center px-4 md:px-6">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white font-facundo">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white font-baloo">
               Lo Mejor de Mi Tierra
             </h1>
             <p className="max-w-[800px] mx-auto text-xl md:text-2xl lg:text-3xl text-white/90 mb-12 font-nunito">
@@ -107,73 +106,80 @@ export default async function HomePage() {
       <section className="w-full py-16 md:py-24 bg-gradient-to-br from-green-50 to-white">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-facundo text-gray-800">
-              Prueba gratis, paga cuando crezzcas
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-baloo text-gray-800">
+              Comienza con tu primera prueba gratuita
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto font-nunito body-normal">
-              Organiza tu primer concurso completamente gratis. Sin tarjeta de
-              crédito.
+              Contáctanos por WhatsApp y organiza tu primer concurso sin costo.
+              Luego elige las opciones que necesites.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Plan Gratuito */}
-            <Card className="relative border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-white shadow-lg">
+            {/* Plan Prueba Gratuita */}
+            <Card className="relative border-2 border-green-400 bg-gradient-to-br from-green-50 to-white shadow-lg">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-600 text-white px-4 py-2 text-sm font-semibold font-nunito">
-                  🎁 Siempre Gratis
+                <Badge className="bg-green-600 text-white px-4 py-2 text-sm font-semibold font-nunito">
+                  Prueba Gratuita
                 </Badge>
               </div>
               <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl font-bold text-gray-800 font-facundo">
-                  Gratis Forever
+                <CardTitle className="text-2xl font-bold text-gray-800 font-baloo">
+                  Primer Concurso
                 </CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-blue-600 font-facundo">
-                    S/ 0
+                  <span className="text-4xl font-bold text-green-600 font-baloo">
+                    GRATIS
                   </span>
-                  <span className="text-gray-500 font-nunito">/siempre</span>
                 </div>
                 <CardDescription className="text-lg mt-2 text-gray-600 font-nunito body-normal">
-                  Para siempre, sin letra pequeña
+                  Prueba completa sin compromiso
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center mb-6">
-                  <Badge className="bg-blue-100 text-blue-700 text-lg px-4 py-2 font-nunito">
-                    2 concursos activos
+                  <Badge className="bg-green-100 text-green-700 text-lg px-4 py-2 font-nunito">
+                    1 concurso activo
                   </Badge>
                 </div>
                 <ul className="space-y-3">
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-blue-600" />
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="text-gray-700 font-nunito">
+                      Configuración completa
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-green-600" />
                     <span className="text-gray-700 font-nunito">
                       Hasta 100 participantes
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-blue-600" />
+                    <Check className="h-5 w-5 text-green-600" />
                     <span className="text-gray-700 font-nunito">
-                      Reportes básicos en PDF
+                      Reportes básicos
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-blue-600" />
+                    <Check className="h-5 w-5 text-green-600" />
                     <span className="text-gray-700 font-nunito">
-                      Soporte por email
+                      Soporte directo por WhatsApp
                     </span>
                   </li>
                 </ul>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-nunito body-semibold py-3">
-                  🎯 Comenzar Gratis Ya
-                </Button>
-                <p className="text-xs text-blue-600 text-center font-nunito font-medium">
-                  ✨ No caduca nunca • Sin tarjeta requerida
-                </p>
+                <div className="space-y-3 mt-8">
+                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-nunito body-semibold py-3 transition-all duration-300 hover:scale-105">
+                    📱 Contactar por WhatsApp
+                  </Button>
+                  <p className="text-xs text-green-600 text-center font-nunito font-medium">
+                    ⚡ Aplican restricciones
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Plan Profesional */}
+            {/* Plan Premium */}
             <Card className="relative border-2 border-emerald-500 shadow-lg scale-105 bg-gradient-to-br from-white to-green-50">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-emerald-600 text-white px-4 py-2 text-sm font-semibold font-nunito">
@@ -182,12 +188,12 @@ export default async function HomePage() {
                 </Badge>
               </div>
               <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl font-bold text-gray-800 font-facundo">
-                  Profesional
+                <CardTitle className="text-2xl font-bold text-gray-800 font-baloo">
+                  Premium
                 </CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-emerald-600 font-facundo">
-                    S/ 99
+                  <span className="text-4xl font-bold text-emerald-600 font-baloo">
+                    {formatCurrency(99)}
                   </span>
                   <span className="text-gray-500 font-nunito">/mes</span>
                 </div>
@@ -198,14 +204,8 @@ export default async function HomePage() {
               <CardContent className="space-y-4">
                 <div className="text-center mb-6">
                   <Badge className="bg-emerald-600 text-white text-lg px-4 py-2 font-nunito">
-                    10 concursos activos
+                    Concursos ilimitados
                   </Badge>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-lg mb-4">
-                  <p className="text-sm text-emerald-700 font-nunito text-center">
-                    <span className="font-bold">Solo S/ 9.90 por concurso</span>{" "}
-                    • 80% de descuento
-                  </p>
                 </div>
                 <ul className="space-y-3">
                   <li className="flex items-center gap-3">
@@ -217,40 +217,54 @@ export default async function HomePage() {
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-emerald-600" />
                     <span className="text-gray-700 font-nunito">
-                      Analytics en tiempo real
+                      Analytics avanzados
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-emerald-600" />
                     <span className="text-gray-700 font-nunito">
-                      Branding personalizado
+                      Historicidad completa
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-emerald-600" />
                     <span className="text-gray-700 font-nunito">
-                      Exportar datos completos
+                      Base de datos propia
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-emerald-600" />
+                    <span className="text-gray-700 font-nunito">
+                      Personalización avanzada
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-emerald-600" />
+                    <span className="text-gray-700 font-nunito">
+                      Múltiples usuarios
                     </span>
                   </li>
                 </ul>
-                <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-nunito body-semibold py-3">
-                  ⚡ Upgrade Ahora
-                </Button>
-                <p className="text-xs text-emerald-600 text-center font-nunito font-medium">
-                  🎯 Cancela cuando quieras • Sin permanencia
-                </p>
+                <div className="space-y-3 mt-8">
+                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-nunito body-semibold py-3 transition-all duration-300 hover:scale-105 shadow-lg">
+                    ⭐ Elegir Premium
+                  </Button>
+                  <p className="text-xs text-emerald-600 text-center font-nunito font-medium">
+                    🎯 Recomendado para empresas activas
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Plan Enterprise */}
-            <Card className="relative border-2 hover:border-emerald-300 transition-all duration-300 hover:shadow-lg">
+            {/* Plan Personalizado */}
+            <Card className="relative border-2 border-gray-200 hover:border-emerald-300 transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
               <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl font-bold text-gray-800 font-facundo">
-                  Enterprise
+                <CardTitle className="text-2xl font-bold text-gray-800 font-baloo">
+                  Personalizado
                 </CardTitle>
                 <div className="mt-4">
-                  <span className="text-3xl font-bold text-emerald-600 font-facundo">
-                    Personalizado
+                  <span className="text-3xl font-bold text-emerald-600 font-baloo">
+                    A medida
                   </span>
                 </div>
                 <CardDescription className="text-lg mt-2 text-gray-600 font-nunito body-normal">
@@ -260,19 +274,14 @@ export default async function HomePage() {
               <CardContent className="space-y-4">
                 <div className="text-center mb-6">
                   <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-lg px-4 py-2 font-nunito">
-                    Todo ilimitado
+                    Todo incluido
                   </Badge>
-                </div>
-                <div className="bg-gradient-to-r from-gray-50 to-emerald-50 p-3 rounded-lg mb-4">
-                  <p className="text-sm text-gray-700 font-nunito text-center font-bold">
-                    Precio basado en tu volumen y necesidades
-                  </p>
                 </div>
                 <ul className="space-y-3">
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-emerald-600" />
                     <span className="text-gray-700 font-nunito">
-                      API completa y webhooks
+                      Todo lo del plan Premium
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
@@ -290,44 +299,100 @@ export default async function HomePage() {
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-emerald-600" />
                     <span className="text-gray-700 font-nunito">
-                      SLA garantizado
+                      Historicidad extendida
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-emerald-600" />
+                    <span className="text-gray-700 font-nunito">
+                      Base de datos dedicada
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-emerald-600" />
+                    <span className="text-gray-700 font-nunito">
+                      Soporte prioritario 24/7
                     </span>
                   </li>
                 </ul>
-                <Button className="w-full bg-gray-800 hover:bg-gray-900 text-white font-nunito body-semibold py-3">
-                  💼 Hablemos
-                </Button>
-                <p className="text-xs text-gray-500 text-center font-nunito">
-                  📞 Demo personalizada en 24h
-                </p>
+                <div className="space-y-3 mt-8">
+                  <Button className="w-full bg-gray-800 hover:bg-gray-900 text-white font-nunito body-semibold py-3 transition-all duration-300 hover:scale-105">
+                    💼 Solicitar Cotización
+                  </Button>
+                  <p className="text-xs text-gray-500 text-center font-nunito">
+                    📞 Demo personalizada • Propuesta en 48h
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Mensaje de Confianza */}
+          {/* Proceso Simple */}
+          <div className="mt-16 bg-emerald-50 rounded-xl p-8 max-w-4xl mx-auto">
+            <h3 className="text-2xl font-bold text-gray-800 font-baloo mb-6 text-center">
+              ¿Cómo funciona?
+            </h3>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
+                  1
+                </div>
+                <h4 className="font-bold text-gray-800 font-nunito mb-2">
+                  Contacta por WhatsApp
+                </h4>
+                <p className="text-gray-600 text-sm font-nunito">
+                  Te ayudamos a configurar tu primer concurso completamente
+                  gratis
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="bg-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
+                  2
+                </div>
+                <h4 className="font-bold text-gray-800 font-nunito mb-2">
+                  Organiza tu concurso
+                </h4>
+                <p className="text-gray-600 text-sm font-nunito">
+                  Experimenta todas las funcionalidades sin restricciones
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="bg-gray-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 font-bold text-lg">
+                  3
+                </div>
+                <h4 className="font-bold text-gray-800 font-nunito mb-2">
+                  Elige tu plan
+                </h4>
+                <p className="text-gray-600 text-sm font-nunito">
+                  Solo pagas cuando necesites más concursos o funciones
+                  avanzadas
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Badge de Confianza */}
           <div className="mt-16 text-center">
-            <div className="inline-flex items-center gap-2 bg-white rounded-full px-6 py-3 shadow-md">
-              <span className="text-green-600">✅</span>
-              <span className="text-gray-700 font-nunito">
-                Más de 500 empresas confían en nosotros
+            <div className="inline-flex items-center gap-4 bg-white rounded-full px-8 py-4 shadow-lg border border-emerald-100 hover:shadow-xl hover:border-emerald-200 transition-all duration-300 hover:scale-105">
+              <span className="text-emerald-600 font-nunito font-medium">
+                ✅ Registro en tiempo real
               </span>
-              <span className="text-green-600">✅</span>
-              <span className="text-gray-700 font-nunito">
-                Soporte en español
+              <span className="text-emerald-600 font-nunito font-medium">
+                ✅ Soporte en español
               </span>
-              <span className="text-green-600">✅</span>
-              <span className="text-gray-700 font-nunito">
-                Datos seguros en Perú
+              <span className="text-emerald-600 font-nunito font-medium">
+                ✅ Datos seguros en Perú
               </span>
             </div>
           </div>
         </div>
       </section>
+
       {/* Features Section */}
       <section className="w-full py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-facundo text-gray-800">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 font-baloo text-gray-800">
               ¿Por qué elegir nuestra plataforma?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto font-nunito body-normal">
@@ -342,7 +407,7 @@ export default async function HomePage() {
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-emerald-600" />
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 font-facundo">
+                <CardTitle className="text-xl font-bold text-gray-800 font-baloo">
                   Gestión de Equipos
                 </CardTitle>
               </CardHeader>
@@ -360,7 +425,7 @@ export default async function HomePage() {
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trophy className="h-8 w-8 text-emerald-600" />
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 font-facundo">
+                <CardTitle className="text-xl font-bold text-gray-800 font-baloo">
                   Concursos Profesionales
                 </CardTitle>
               </CardHeader>
@@ -377,7 +442,7 @@ export default async function HomePage() {
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <BarChart3 className="h-8 w-8 text-emerald-600" />
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-800 font-facundo">
+                <CardTitle className="text-xl font-bold text-gray-800 font-baloo">
                   Analytics Avanzados
                 </CardTitle>
               </CardHeader>
@@ -396,7 +461,7 @@ export default async function HomePage() {
       <section className="w-full py-16 md:py-24 bg-gradient-to-r from-emerald-600 to-green-500 text-white">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 font-facundo">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 font-baloo">
               ¿Listo para organizar tu primer concurso?
             </h2>
             <p className="text-xl mb-8 text-white/90 font-nunito body-normal">
@@ -431,13 +496,13 @@ export default async function HomePage() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <Logo size="md" className="mb-4" showText={true} href="/" />
+              <Logo size="md" className="mb-4" href="/" />
               <p className="text-gray-300 font-nunito body-normal">
                 La plataforma líder para concursos ganaderos en Colombia.
               </p>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-white font-facundo">
+              <h4 className="font-bold mb-4 text-white font-baloo">
                 Producto
               </h4>
               <ul className="space-y-2 text-gray-300 font-nunito">
@@ -468,7 +533,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-white font-facundo">
+              <h4 className="font-bold mb-4 text-white font-baloo">
                 Empresa
               </h4>
               <ul className="space-y-2 text-gray-300 font-nunito">
@@ -499,7 +564,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-white font-facundo">
+              <h4 className="font-bold mb-4 text-white font-baloo">
                 Soporte
               </h4>
               <ul className="space-y-2 text-gray-300 font-nunito">

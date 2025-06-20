@@ -24,7 +24,7 @@ export async function signToken(payload: JWTPayload): Promise<string> {
   try {
     console.log("Signing token with payload:", payload)
     const secret = getSecretKey()
-    const token = await new SignJWT(payload) // Payload now conforms to JoseJWTPayload
+    const token = await new SignJWT(payload)
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("7d") // Token expires in 7 days
@@ -44,7 +44,15 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     const secret = getSecretKey()
     const { payload } = await jwtVerify(token, secret)
     console.log("Token verified successfully:", payload)
-    return payload as JWTPayload // Explicitly cast to your JWTPayload
+
+    // Ensure roles is always an array
+    const verifiedPayload = payload as JWTPayload
+    if (!Array.isArray(verifiedPayload.roles)) {
+      console.error("Token payload roles is not an array:", verifiedPayload.roles)
+      return null
+    }
+
+    return verifiedPayload
   } catch (error) {
     console.error("Error verifying token:", error)
     console.error("Token that failed:", token.substring(0, 50) + "...")

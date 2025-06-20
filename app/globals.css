@@ -1,7 +1,6 @@
 /* Importing fonts - Tipografías estandarizadas */
 @import url("https://fonts.googleapis.com/css2?family=Baloo+Tamma+2:wght@400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Facundo:wght@400;700&display=swap");
 
 /* Tailwind directives */
 @tailwind base;
@@ -47,7 +46,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Custom font families */
-    --font-heading: "Facundo", "Baloo Tamma 2", sans-serif;
+    --font-heading: "Baloo Tamma 2", sans-serif;
     --font-body: "Nunito", system-ui, -apple-system, sans-serif;
   }
 
@@ -138,7 +137,7 @@
   }
 
   /* Font family utilities */
-  .font-facundo {
+  .font-baloo {
     font-family: var(--font-heading);
   }
 
