@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("POST /api/admin/contests - Starting request processing")
+    console.log("POST /api/admin/concursos - Starting request processing")
 
     const token = request.cookies.get("auth-token")?.value
     console.log("Token found:", !!token)
@@ -193,8 +193,8 @@ export async function POST(request: NextRequest) {
 
     console.log("Creating contest with data...")
 
-    // Prepare JSON data for Prisma
-    const premiacionData: Prisma.InputJsonValue | null = premiacion ? { descripcion: premiacion } : null
+    // Prepare JSON data for Prisma - use any type to bypass strict typing
+    const premiacionData = premiacion ? { descripcion: premiacion } : null
 
     // Create contest
     const contest = await prisma.contest.create({
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         cuotaInscripcion: cuotaInscripcion ? Number.parseFloat(cuotaInscripcion.toString()) : null,
         tipoGanado: tipoConcurso ? [tipoConcurso] : [],
         categorias: categorias || [],
-        premiacion: premiacionData,
+        premiacion: premiacionData as any,
         reglamento: reglamento || null,
         contactoOrganizador: contactoOrganizador || null,
         telefonoContacto: telefonoContacto || null,

@@ -37,7 +37,7 @@ interface Contest {
   ubicacion?: string
   capacidadMaxima?: number
   cuotaInscripcion?: number
-  tipoConcurso?: string
+  tipoGanado?: string[]
   isPublic: boolean
   isActive: boolean
   isFeatured: boolean
@@ -80,7 +80,7 @@ export default function ConcursosPage() {
 
   const fetchContests = async () => {
     try {
-      const response = await fetch("/api/admin/contests")
+      const response = await fetch("/api/admin/concursos")
       if (response.ok) {
         const data = await response.json()
         setContests(data.contests || [])
@@ -100,7 +100,7 @@ export default function ConcursosPage() {
 
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/admin/contests/${contestToDelete.id}`, {
+      const response = await fetch(`/api/admin/concursos/${contestToDelete.id}`, {
         method: "DELETE",
       })
 
@@ -291,7 +291,7 @@ export default function ConcursosPage() {
                         <span>{contest._count?.categories || 0}</span>
                       </TableCell>
                       <TableCell>
-                        <span>{contest.tipoConcurso || "N/A"}</span>
+                        <span>{contest.tipoGanado?.[0] || "N/A"}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

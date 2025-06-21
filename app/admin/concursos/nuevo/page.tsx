@@ -161,7 +161,7 @@ export default function NuevoConcursoPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/admin/contests", {
+      const response = await fetch("/api/admin/concursos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -269,18 +269,13 @@ export default function NuevoConcursoPage() {
                         <SelectValue placeholder="Seleccionar tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bovino">Concurso Bovino</SelectItem>
-                        <SelectItem value="equino">Concurso Equino</SelectItem>
-                        <SelectItem value="porcino">Concurso Porcino</SelectItem>
-                        <SelectItem value="ovino">Concurso Ovino</SelectItem>
-                        <SelectItem value="caprino">Concurso Caprino</SelectItem>
-                        <SelectItem value="aviar">Concurso Aviar</SelectItem>
-                        <SelectItem value="productos-lacteos">Productos Lácteos</SelectItem>
-                        <SelectItem value="productos-carnicos">Productos Cárnicos</SelectItem>
-                        <SelectItem value="productos-agricolas">Productos Agrícolas</SelectItem>
-                        <SelectItem value="artesanias">Artesanías</SelectItem>
-                        <SelectItem value="mixto">Concurso Mixto</SelectItem>
-                        <SelectItem value="otros">Otros</SelectItem>
+                        <SelectItem value="BOVINO">Concurso Bovino</SelectItem>
+                        <SelectItem value="EQUINO">Concurso Equino</SelectItem>
+                        <SelectItem value="PORCINO">Concurso Porcino</SelectItem>
+                        <SelectItem value="OVINO">Concurso Ovino</SelectItem>
+                        <SelectItem value="CAPRINO">Concurso Caprino</SelectItem>
+                        <SelectItem value="AVIAR">Concurso Aviar</SelectItem>
+                        <SelectItem value="OTROS">Otros</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
