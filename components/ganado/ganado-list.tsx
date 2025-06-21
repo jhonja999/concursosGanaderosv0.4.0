@@ -71,9 +71,9 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
   const [ganado, setGanado] = useState<Ganado[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [categoriaFilter, setCategoriaFilter] = useState("")
-  const [razaFilter, setRazaFilter] = useState("")
-  const [sexoFilter, setSexoFilter] = useState("")
+  const [categoriaFilter, setCategoriaFilter] = useState("all")
+  const [razaFilter, setRazaFilter] = useState("all")
+  const [sexoFilter, setSexoFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -86,9 +86,9 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
       })
 
       if (search) params.append("search", search)
-      if (categoriaFilter) params.append("categoria", categoriaFilter)
-      if (razaFilter) params.append("raza", razaFilter)
-      if (sexoFilter) params.append("sexo", sexoFilter)
+      if (categoriaFilter && categoriaFilter !== "all") params.append("categoria", categoriaFilter)
+      if (razaFilter && razaFilter !== "all") params.append("raza", razaFilter)
+      if (sexoFilter && sexoFilter !== "all") params.append("sexo", sexoFilter)
 
       const response = await fetch(`/api/ganado?${params}`)
       if (response.ok) {
@@ -114,9 +114,9 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
 
   const clearFilters = () => {
     setSearch("")
-    setCategoriaFilter("")
-    setRazaFilter("")
-    setSexoFilter("")
+    setCategoriaFilter("all")
+    setRazaFilter("all")
+    setSexoFilter("all")
     setCurrentPage(1)
   }
 
@@ -167,7 +167,7 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas las categorías</SelectItem>
+                <SelectItem value="all">Todas las categorías</SelectItem>
                 {CATEGORIAS_GANADO.map((categoria) => (
                   <SelectItem key={categoria.value} value={categoria.value}>
                     {categoria.label}
@@ -181,7 +181,7 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
                 <SelectValue placeholder="Raza" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas las razas</SelectItem>
+                <SelectItem value="all">Todas las razas</SelectItem>
                 {RAZAS_GANADO.map((raza) => (
                   <SelectItem key={raza.value} value={raza.value}>
                     {raza.label}
@@ -195,7 +195,7 @@ export function GanadoList({ onEdit, onDelete, onView, onAdd }: GanadoListProps)
                 <SelectValue placeholder="Sexo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {SEXOS_GANADO.map((sexo) => (
                   <SelectItem key={sexo.value} value={sexo.value}>
                     {sexo.label}

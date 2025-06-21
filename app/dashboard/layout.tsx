@@ -71,6 +71,11 @@ const menuItems = [
     icon: Users,
   },
   {
+    title: "Ganado",
+    url: "/dashboard/ganado",
+    icon: Users,
+  },
+  {
     title: "Configuración",
     url: "/dashboard/configuracion",
     icon: Settings,
@@ -93,10 +98,21 @@ export default function DashboardLayout({
   const fetchUserData = async () => {
     try {
       const response = await fetch("/api/auth/me")
+      
+      // Check if response is OK before trying to parse JSON
+      if (!response.ok) {
+        console.error("Error fetching user data: Response not OK", response.status, response.statusText)
+        // Handle non-OK response (e.g., redirect to login)
+        window.location.href = "/iniciar-sesion"
+        return
+      }
+      
       const userData = await response.json()
       setUser(userData)
     } catch (error) {
       console.error("Error fetching user data:", error)
+      // Consider redirecting to login page on error
+      window.location.href = "/iniciar-sesion"
     } finally {
       setIsLoading(false)
     }
