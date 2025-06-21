@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ArrowLeft, Save, Trophy, CalendarIcon, MapPin, DollarSign } from "lucide-react"
+import { ArrowLeft, Save, Trophy, CalendarIcon, MapPin, DollarSign, Plus, X } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -35,7 +35,7 @@ interface ConcursoFormData {
   direccion: string
   capacidadMaxima: number
   cuotaInscripcion: number
-  tipoGanado: string
+  tipoConcurso: string
   categorias: string[]
   premiacion: string
   reglamento: string
@@ -53,6 +53,7 @@ interface ConcursoFormData {
 export default function NuevoConcursoPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [newCategory, setNewCategory] = useState("")
   const [formData, setFormData] = useState<ConcursoFormData>({
     nombre: "",
     slug: "",
@@ -66,7 +67,7 @@ export default function NuevoConcursoPage() {
     direccion: "",
     capacidadMaxima: 0,
     cuotaInscripcion: 0,
-    tipoGanado: "",
+    tipoConcurso: "",
     categorias: [],
     premiacion: "",
     reglamento: "",
@@ -127,11 +128,33 @@ export default function NuevoConcursoPage() {
     })
   }
 
+  const addCategory = () => {
+    if (newCategory.trim() && !formData.categorias.includes(newCategory.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        categorias: [...prev.categorias, newCategory.trim()],
+      }))
+      setNewCategory("")
+    }
+  }
+
+  const removeCategory = (categoryToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      categorias: prev.categorias.filter((cat) => cat !== categoryToRemove),
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.nombre || !formData.descripcion) {
       toast.error("Por favor completa los campos obligatorios")
+      return
+    }
+
+    if (!formData.companyId) {
+      toast.error("Por favor selecciona una compañía organizadora")
       return
     }
 
@@ -143,10 +166,18 @@ export default function NuevoConcursoPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          // Ensure dates are properly formatted
+          fechaInicio: formData.fechaInicio?.toISOString(),
+          fechaFin: formData.fechaFin?.toISOString(),
+          fechaInicioRegistro: formData.fechaInicioRegistro?.toISOString(),
+          fechaFinRegistro: formData.fechaFinRegistro?.toISOString(),
+        }),
       })
 
       if (response.ok) {
+        const data = await response.json()
         toast.success("Concurso creado exitosamente")
         router.push("/admin/concursos")
       } else {
@@ -232,18 +263,24 @@ export default function NuevoConcursoPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="tipoGanado">Tipo de Ganado</Label>
-                    <Select onValueChange={(value) => handleInputChange("tipoGanado", value)}>
+                    <Label htmlFor="tipoConcurso">Tipo de Concurso</Label>
+                    <Select onValueChange={(value) => handleInputChange("tipoConcurso", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bovino">Bovino</SelectItem>
-                        <SelectItem value="equino">Equino</SelectItem>
-                        <SelectItem value="porcino">Porcino</SelectItem>
-                        <SelectItem value="ovino">Ovino</SelectItem>
-                        <SelectItem value="caprino">Caprino</SelectItem>
-                        <SelectItem value="mixto">Mixto</SelectItem>
+                        <SelectItem value="bovino">Concurso Bovino</SelectItem>
+                        <SelectItem value="equino">Concurso Equino</SelectItem>
+                        <SelectItem value="porcino">Concurso Porcino</SelectItem>
+                        <SelectItem value="ovino">Concurso Ovino</SelectItem>
+                        <SelectItem value="caprino">Concurso Caprino</SelectItem>
+                        <SelectItem value="aviar">Concurso Aviar</SelectItem>
+                        <SelectItem value="productos-lacteos">Productos Lácteos</SelectItem>
+                        <SelectItem value="productos-carnicos">Productos Cárnicos</SelectItem>
+                        <SelectItem value="productos-agricolas">Productos Agrícolas</SelectItem>
+                        <SelectItem value="artesanias">Artesanías</SelectItem>
+                        <SelectItem value="mixto">Concurso Mixto</SelectItem>
+                        <SelectItem value="otros">Otros</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -260,6 +297,56 @@ export default function NuevoConcursoPage() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Categories */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Categorías del Concurso</CardTitle>
+                <CardDescription>
+                  Define las categorías en las que se pueden inscribir los participantes
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Nombre de la categoría"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        addCategory()
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addCategory} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {formData.categorias.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Categorías agregadas:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.categorias.map((categoria, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm">
+                          <span>{categoria}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0"
+                            onClick={() => removeCategory(categoria)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -433,6 +520,70 @@ export default function NuevoConcursoPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Additional Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Información Adicional</CardTitle>
+                <CardDescription>Detalles adicionales del concurso</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reglamento">Reglamento</Label>
+                  <Textarea
+                    id="reglamento"
+                    value={formData.reglamento}
+                    onChange={(e) => handleInputChange("reglamento", e.target.value)}
+                    placeholder="Reglamento del concurso"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="requisitoEspeciales">Requisitos Especiales</Label>
+                  <Textarea
+                    id="requisitoEspeciales"
+                    value={formData.requisitoEspeciales}
+                    onChange={(e) => handleInputChange("requisitoEspeciales", e.target.value)}
+                    placeholder="Requisitos especiales para participar"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="contactoOrganizador">Contacto Organizador</Label>
+                    <Input
+                      id="contactoOrganizador"
+                      value={formData.contactoOrganizador}
+                      onChange={(e) => handleInputChange("contactoOrganizador", e.target.value)}
+                      placeholder="Nombre del contacto"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="telefonoContacto">Teléfono de Contacto</Label>
+                    <Input
+                      id="telefonoContacto"
+                      value={formData.telefonoContacto}
+                      onChange={(e) => handleInputChange("telefonoContacto", e.target.value)}
+                      placeholder="+57 300 123 4567"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="emailContacto">Email de Contacto</Label>
+                    <Input
+                      id="emailContacto"
+                      type="email"
+                      value={formData.emailContacto}
+                      onChange={(e) => handleInputChange("emailContacto", e.target.value)}
+                      placeholder="contacto@concurso.com"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
@@ -463,8 +614,10 @@ export default function NuevoConcursoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Label htmlFor="companyId">Compañía</Label>
-                  <Select onValueChange={(value) => handleInputChange("companyId", value)}>
+                  <Label htmlFor="companyId">
+                    Compañía <span className="text-red-500">*</span>
+                  </Label>
+                  <Select onValueChange={(value) => handleInputChange("companyId", value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione una compañía" />
                     </SelectTrigger>

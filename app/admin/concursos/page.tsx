@@ -37,7 +37,7 @@ interface Contest {
   ubicacion?: string
   capacidadMaxima?: number
   cuotaInscripcion?: number
-  tipoGanado?: string
+  tipoConcurso?: string
   isPublic: boolean
   isActive: boolean
   isFeatured: boolean
@@ -223,6 +223,7 @@ export default function ConcursosPage() {
                     <TableHead>Destacado</TableHead>
                     <TableHead>Participantes</TableHead>
                     <TableHead>Categorías</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -288,6 +289,9 @@ export default function ConcursosPage() {
                       </TableCell>
                       <TableCell>
                         <span>{contest._count?.categories || 0}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span>{contest.tipoConcurso || "N/A"}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

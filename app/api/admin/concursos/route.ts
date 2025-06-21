@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
+import type { Prisma } from "@prisma/client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: any = {}
+    const where: Prisma.ContestWhereInput = {}
 
     if (search) {
       where.OR = [
@@ -98,18 +99,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("POST /api/admin/contests - Starting request processing")
+
     const token = request.cookies.get("auth-token")?.value
+    console.log("Token found:", !!token)
 
     if (!token) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
     const payload = await verifyToken(token)
+    console.log("Token payload:", payload)
+
     if (!payload || !payload.roles || !Array.isArray(payload.roles) || !payload.roles.includes("SUPERADMIN")) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
     const body = await request.json()
+    console.log("Request body received:", body)
+
     const {
       nombre,
       slug,
@@ -123,7 +131,7 @@ export async function POST(request: NextRequest) {
       direccion,
       capacidadMaxima,
       cuotaInscripcion,
-      tipoGanado,
+      tipoConcurso,
       categorias,
       premiacion,
       reglamento,
@@ -143,6 +151,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nombre y descripción son obligatorios" }, { status: 400 })
     }
 
+    if (!companyId) {
+      return NextResponse.json({ error: "La compañía organizadora es obligatoria" }, { status: 400 })
+    }
+
     // Generate slug if not provided
     const finalSlug =
       slug ||
@@ -159,6 +171,8 @@ export async function POST(request: NextRequest) {
         .replace(/-+/g, "-")
         .trim()
 
+    console.log("Generated slug:", finalSlug)
+
     // Check if slug already exists
     const existingContest = await prisma.contest.findFirst({
       where: { slug: finalSlug },
@@ -168,16 +182,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Ya existe un concurso con este slug" }, { status: 400 })
     }
 
-    // Validate company exists if provided
-    if (companyId) {
-      const company = await prisma.company.findUnique({
-        where: { id: companyId },
-      })
+    // Validate company exists
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    })
 
-      if (!company) {
-        return NextResponse.json({ error: "La compañía especificada no existe" }, { status: 400 })
-      }
+    if (!company) {
+      return NextResponse.json({ error: "La compañía especificada no existe" }, { status: 400 })
     }
+
+    console.log("Creating contest with data...")
+
+    // Prepare JSON data for Prisma
+    const premiacionData: Prisma.InputJsonValue | null = premiacion ? { descripcion: premiacion } : null
 
     // Create contest
     const contest = await prisma.contest.create({
@@ -193,10 +210,10 @@ export async function POST(request: NextRequest) {
         ubicacion: ubicacion || null,
         direccion: direccion || null,
         capacidadMaxima: capacidadMaxima || null,
-        cuotaInscripcion: cuotaInscripcion || 0,
-        tipoGanado: tipoGanado || null,
+        cuotaInscripcion: cuotaInscripcion ? Number.parseFloat(cuotaInscripcion.toString()) : null,
+        tipoGanado: tipoConcurso ? [tipoConcurso] : [],
         categorias: categorias || [],
-        premiacion: premiacion || null,
+        premiacion: premiacionData,
         reglamento: reglamento || null,
         contactoOrganizador: contactoOrganizador || null,
         telefonoContacto: telefonoContacto || null,
@@ -206,7 +223,8 @@ export async function POST(request: NextRequest) {
         isActive: isActive || false,
         isFeatured: isFeatured || false,
         permitirRegistroTardio: permitirRegistroTardio || false,
-        companyId: companyId || null,
+        companyId: companyId,
+        createdById: payload.userId,
       },
       include: {
         company: {
@@ -217,6 +235,8 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    console.log("Contest created successfully:", contest.id)
 
     return NextResponse.json({ contest }, { status: 201 })
   } catch (error) {

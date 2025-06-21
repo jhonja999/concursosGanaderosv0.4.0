@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
+import type { Prisma } from "@prisma/client"
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,7 +34,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Concurso no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json({ contest })
+    // Transform the data to include tipoConcurso for backward compatibility
+    const transformedContest = {
+      ...contest,
+      tipoConcurso: contest.tipoGanado?.[0] || "",
+    }
+
+    return NextResponse.json({ contest: transformedContest })
   } catch (error) {
     console.error("Error fetching contest:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
@@ -68,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       direccion,
       capacidadMaxima,
       cuotaInscripcion,
-      tipoGanado,
+      tipoConcurso,
       categorias,
       premiacion,
       reglamento,
@@ -95,6 +102,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Validate required fields
     if (!nombre || !descripcion) {
       return NextResponse.json({ error: "Nombre y descripción son obligatorios" }, { status: 400 })
+    }
+
+    if (!companyId) {
+      return NextResponse.json({ error: "La compañía organizadora es obligatoria" }, { status: 400 })
     }
 
     // Generate slug if not provided
@@ -124,51 +135,60 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // Validate company exists if provided
-    if (companyId) {
-      const company = await prisma.company.findUnique({
-        where: { id: companyId },
-      })
+    // Validate company exists
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    })
 
-      if (!company) {
-        return NextResponse.json({ error: "La compañía especificada no existe" }, { status: 400 })
-      }
+    if (!company) {
+      return NextResponse.json({ error: "La compañía especificada no existe" }, { status: 400 })
     }
+
+    // Prepare JSON data for Prisma
+    let premiacionData: Prisma.InputJsonValue | null | undefined = undefined
+    if (premiacion !== undefined) {
+      premiacionData = premiacion ? { descripcion: premiacion } : null
+    }
+
+    // Build update data conditionally
+    const updateData: Prisma.ContestUpdateInput = {
+      nombre,
+      slug: finalSlug,
+      descripcion,
+      companyId: companyId,
+      updatedAt: new Date(),
+    }
+
+    // Only update fields that are provided
+    if (imagenPrincipal !== undefined) updateData.imagenPrincipal = imagenPrincipal
+    if (fechaInicio) updateData.fechaInicio = new Date(fechaInicio)
+    if (fechaFin !== undefined) updateData.fechaFin = fechaFin ? new Date(fechaFin) : null
+    if (fechaInicioRegistro !== undefined)
+      updateData.fechaInicioRegistro = fechaInicioRegistro ? new Date(fechaInicioRegistro) : null
+    if (fechaFinRegistro !== undefined)
+      updateData.fechaFinRegistro = fechaFinRegistro ? new Date(fechaFinRegistro) : null
+    if (ubicacion !== undefined) updateData.ubicacion = ubicacion
+    if (direccion !== undefined) updateData.direccion = direccion
+    if (capacidadMaxima !== undefined) updateData.capacidadMaxima = capacidadMaxima
+    if (cuotaInscripcion !== undefined)
+      updateData.cuotaInscripcion = cuotaInscripcion ? Number.parseFloat(cuotaInscripcion.toString()) : null
+    if (tipoConcurso !== undefined) updateData.tipoGanado = tipoConcurso ? [tipoConcurso] : []
+    if (categorias !== undefined) updateData.categorias = categorias
+    if (premiacionData !== undefined) updateData.premiacion = premiacionData
+    if (reglamento !== undefined) updateData.reglamento = reglamento
+    if (contactoOrganizador !== undefined) updateData.contactoOrganizador = contactoOrganizador
+    if (telefonoContacto !== undefined) updateData.telefonoContacto = telefonoContacto
+    if (emailContacto !== undefined) updateData.emailContacto = emailContacto
+    if (requisitoEspeciales !== undefined) updateData.requisitoEspeciales = requisitoEspeciales
+    if (isPublic !== undefined) updateData.isPublic = isPublic
+    if (isActive !== undefined) updateData.isActive = isActive
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured
+    if (permitirRegistroTardio !== undefined) updateData.permitirRegistroTardio = permitirRegistroTardio
 
     // Update contest
     const contest = await prisma.contest.update({
       where: { id },
-      data: {
-        nombre,
-        slug: finalSlug,
-        descripcion,
-        imagenPrincipal: imagenPrincipal || existingContest.imagenPrincipal,
-        fechaInicio: fechaInicio ? new Date(fechaInicio) : existingContest.fechaInicio,
-        fechaFin: fechaFin ? new Date(fechaFin) : existingContest.fechaFin,
-        fechaInicioRegistro: fechaInicioRegistro ? new Date(fechaInicioRegistro) : existingContest.fechaInicioRegistro,
-        fechaFinRegistro: fechaFinRegistro ? new Date(fechaFinRegistro) : existingContest.fechaFinRegistro,
-        ubicacion: ubicacion !== undefined ? ubicacion : existingContest.ubicacion,
-        direccion: direccion !== undefined ? direccion : existingContest.direccion,
-        capacidadMaxima: capacidadMaxima !== undefined ? capacidadMaxima : existingContest.capacidadMaxima,
-        cuotaInscripcion: cuotaInscripcion !== undefined ? cuotaInscripcion : existingContest.cuotaInscripcion,
-        tipoGanado: tipoGanado !== undefined ? tipoGanado : existingContest.tipoGanado,
-        categorias: categorias !== undefined ? categorias : existingContest.categorias,
-        premiacion: premiacion !== undefined ? premiacion : existingContest.premiacion,
-        reglamento: reglamento !== undefined ? reglamento : existingContest.reglamento,
-        contactoOrganizador:
-          contactoOrganizador !== undefined ? contactoOrganizador : existingContest.contactoOrganizador,
-        telefonoContacto: telefonoContacto !== undefined ? telefonoContacto : existingContest.telefonoContacto,
-        emailContacto: emailContacto !== undefined ? emailContacto : existingContest.emailContacto,
-        requisitoEspeciales:
-          requisitoEspeciales !== undefined ? requisitoEspeciales : existingContest.requisitoEspeciales,
-        isPublic: isPublic !== undefined ? isPublic : existingContest.isPublic,
-        isActive: isActive !== undefined ? isActive : existingContest.isActive,
-        isFeatured: isFeatured !== undefined ? isFeatured : existingContest.isFeatured,
-        permitirRegistroTardio:
-          permitirRegistroTardio !== undefined ? permitirRegistroTardio : existingContest.permitirRegistroTardio,
-        companyId: companyId !== undefined ? companyId : existingContest.companyId,
-        updatedAt: new Date(),
-      },
+      data: updateData,
       include: {
         company: {
           select: {
