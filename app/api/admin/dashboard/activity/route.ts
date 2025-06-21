@@ -15,66 +15,94 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
+    const limit = Number.parseInt(searchParams.get("limit") || "12")
 
-    // Obtener actividad reciente (ej. últimos 10 logs de auditoría)
+    const activity: any[] = []
+
+    // 1. Logs de auditoría recientes
     const auditLogs = await prisma.auditLog.findMany({
       orderBy: {
         createdAt: "desc",
       },
-      take: limit,
+      take: 8,
       include: {
         user: {
           select: {
-            id: true,
             nombre: true,
             apellido: true,
-            email: true,
           },
         },
       },
     })
-
-    // Obtener notificaciones recientes (ej. últimas 10 notificaciones)
-    const notifications = await prisma.notification.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            nombre: true,
-            apellido: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    // Combinar y formatear actividad
-    const activity: any[] = []
 
     auditLogs.forEach((log) => {
+      let status = "info"
+      if (log.action.includes("DELETE")) status = "error"
+      else if (log.action.includes("CREATE")) status = "success"
+      else if (log.action.includes("UPDATE")) status = "warning"
+
       activity.push({
-        id: log.id,
+        id: `audit-${log.id}`,
         type: "audit",
         description: `${log.action} en ${log.entityType}`,
         user: log.user ? `${log.user.nombre} ${log.user.apellido}` : "Sistema",
         date: log.createdAt.toISOString(),
-        status: "info",
+        status,
       })
     })
 
-    notifications.forEach((notification) => {
+    // 2. Nuevos usuarios (últimos 5 días)
+    const newUsers = await prisma.user.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 4,
+    })
+
+    newUsers.forEach((user) => {
       activity.push({
-        id: notification.id,
-        type: "notification",
-        description: notification.message,
-        user: notification.user ? `${notification.user.nombre} ${notification.user.apellido}` : "Sistema",
-        date: notification.createdAt.toISOString(),
-        status: notification.status === "READ" ? "success" : "info",
+        id: `user-${user.id}`,
+        type: "system",
+        description: "Nuevo usuario registrado",
+        user: `${user.nombre} ${user.apellido}`,
+        date: user.createdAt.toISOString(),
+        status: "success",
+      })
+    })
+
+    // 3. Nuevas suscripciones (últimos 7 días)
+    const newSubscriptions = await prisma.subscription.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 4,
+      include: {
+        company: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+    })
+
+    newSubscriptions.forEach((sub) => {
+      activity.push({
+        id: `subscription-${sub.id}`,
+        type: "system",
+        description: `Nueva suscripción ${sub.plan}`,
+        user: sub.company.nombre,
+        date: sub.createdAt.toISOString(),
+        status: "success",
       })
     })
 
@@ -84,6 +112,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(activity.slice(0, limit))
   } catch (error) {
     console.error("Error fetching dashboard activity:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json([], { status: 200 })
   }
 }

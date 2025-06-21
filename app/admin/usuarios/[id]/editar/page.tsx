@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -83,7 +83,8 @@ interface FormErrors {
   general?: string
 }
 
-export default function EditarUsuarioPage({ params }: { params: { id: string } }) {
+export default function EditarUsuarioPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params)
   const router = useRouter()
   const [user, setUser] = useState<UserData | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -106,12 +107,12 @@ export default function EditarUsuarioPage({ params }: { params: { id: string } }
   useEffect(() => {
     fetchUser()
     fetchCompanies()
-  }, [params.id])
+  }, [resolvedParams.id])
 
   const fetchUser = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/admin/users/${params.id}`)
+      const response = await fetch(`/api/admin/users/${resolvedParams.id}`)
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
@@ -193,7 +194,7 @@ export default function EditarUsuarioPage({ params }: { params: { id: string } }
     setSuccessMessage("")
 
     try {
-      const response = await fetch(`/api/admin/users/${params.id}`, {
+      const response = await fetch(`/api/admin/users/${resolvedParams.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -239,7 +240,7 @@ export default function EditarUsuarioPage({ params }: { params: { id: string } }
     setIsDeleting(true)
 
     try {
-      const response = await fetch(`/api/admin/users/${params.id}`, {
+      const response = await fetch(`/api/admin/users/${resolvedParams.id}`, {
         method: "DELETE",
       })
 

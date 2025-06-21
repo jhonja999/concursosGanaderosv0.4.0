@@ -38,7 +38,7 @@ export async function signToken(payload: JWTPayload): Promise<string> {
   }
 }
 
-export async function verifyToken(token: string): Promise<JWTPayload | null> {
+export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
     console.log("Verifying token...")
     const secret = getSecretKey()
@@ -59,3 +59,6 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     return null
   }
 }
+
+// Keep the old function name for backward compatibility
+export const verifyToken = verifyJWT

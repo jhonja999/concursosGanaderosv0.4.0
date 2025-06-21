@@ -49,6 +49,9 @@ SUBSCRIPTION_EXPIRED // Suscripción expirada
 SYSTEM_ALERT         // Alerta del sistema
 PAYMENT_RECEIVED     // Pago recibido
 PAYMENT_FAILED       // Pago fallido
+CONTEST_CREATED      // Concurso creado
+CONTEST_UPDATED      // Concurso actualizado
+CONTEST_PUBLISHED    // Concurso publicado
 }
 
 enum NotificationStatus {
@@ -56,6 +59,30 @@ UNREAD
 READ
 ARCHIVED
 }
+
+enum ContestStatus {
+BORRADOR             // En preparación
+PUBLICADO            // Publicado y visible
+INSCRIPCIONES_ABIERTAS // Inscripciones abiertas
+INSCRIPCIONES_CERRADAS // Inscripciones cerradas
+EN_CURSO             // Concurso en desarrollo
+FINALIZADO           // Concurso terminado
+CANCELADO            // Concurso cancelado
+}
+
+enum TipoGanado {
+BOVINO
+EQUINO
+PORCINO
+OVINO
+CAPRINO
+AVIAR
+OTROS
+}
+
+// =========================================================================
+// MODELO DE USUARIO (OPTIMIZADO PARA ADMIN DASHBOARD)
+// =========================================================================
 
 model User {
 id        String   @id @default(cuid())
@@ -66,14 +93,21 @@ apellido  String
 telefono  String?
 role      UserRole @default(REGISTRADOR)
 companyId String?
-company   Company? @relation(fields: [companyId], references: [id])
+company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 isActive  Boolean  @default(true)
 
 // Campos adicionales para SUPERADMIN
 isSuperAdmin Boolean @default(false)   // Flag adicional de seguridad
 
+// Campos para gestión de acceso
 contestAccess   Boolean  @default(false)  // Acceso a funcionalidades de concursos
 lastLogin       DateTime?                  // Último inicio de sesión
+emailVerified   Boolean  @default(false)   // Email verificado
+profileImage    String?                    // URL de imagen de perfil (Cloudinary)
+
+// Metadatos de usuario
+preferences     Json?                      // Preferencias del usuario en JSON
+metadata        Json?                      // Metadatos adicionales
 
 createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt
@@ -83,7 +117,15 @@ passwordResetTokens     PasswordResetToken[]
 companyRequestsReviewed CompanyRequest[]
 notifications           Notification[]
 auditLogs               AuditLog[]
+companiesCreated        Company[]            @relation("CompanyCreator")
+uploadedMedia           Media[]
+contestsCreated         Contest[]            @relation("ContestCreator")
 
+@@index([email])
+@@index([companyId])
+@@index([role])
+@@index([isActive])
+@@index([lastLogin])
 @@map("users")
 }
 
@@ -102,30 +144,52 @@ createdAt DateTime @default(now())
 
 @@index([token])
 @@index([userId])
+@@index([expiresAt])
 @@map("password_reset_tokens")
 }
 
 // =========================================================================
-// MODELO DE COMPAÑÍA
+// MODELO DE COMPAÑÍA (OPTIMIZADO PARA ADMIN DASHBOARD)
 // =========================================================================
 
 model Company {
 id          String             @id @default(cuid())
-nombre      String
+nombre      String             // Nombre interno/administrativo
+publicName  String?            // Nombre público (display name)
 slug        String             @unique
 email       String
 telefono    String?
 direccion   String?
-logo        String?
-descripcion String?
+logo        String?            // URL de Cloudinary
+logoPublicId String?           // Public ID de Cloudinary para gestión
+descripcion String?            @db.Text
 website     String?
 ubicacion   String?
 isFeatured  Boolean            @default(false)
 isPublished Boolean            @default(false)
 isActive    Boolean            @default(true)
 
-// Información adicional
+// Información adicional para admin
 tipoOrganizacion String?        // Tipo de organización
+nit             String?         // NIT o identificación fiscal
+representanteLegal String?      // Representante legal
+contactoPrincipal String?       // Contacto principal
+
+// SEO y Marketing
+metaTitle       String?         // Meta título para SEO
+metaDescription String?         // Meta descripción para SEO
+socialLinks     Json?           // Enlaces de redes sociales en JSON
+
+// Estadísticas y métricas
+viewCount       Int             @default(0)    // Contador de vistas
+rating          Float?          @default(0)    // Calificación promedio
+reviewCount     Int             @default(0)    // Número de reseñas
+
+// Gestión administrativa
+createdById     String?         // Usuario que creó la compañía
+createdBy       User?           @relation("CompanyCreator", fields: [createdById], references: [id])
+approvedAt      DateTime?       // Fecha de aprobación
+approvedById    String?         // Usuario que aprobó
 
 createdAt   DateTime           @default(now())
 updatedAt   DateTime           @updatedAt
@@ -136,45 +200,149 @@ subscriptionId String?       @unique
 
 // Relaciones
 users     User[]
-
-// Solicitud original (si fue creada por solicitud)
 companyRequest CompanyRequest?
+contests  Contest[]
 
+@@index([slug])
+@@index([email])
+@@index([isPublished])
+@@index([isFeatured])
+@@index([isActive])
+@@index([createdById])
+@@index([createdAt])
 @@map("companies")
 }
 
 // =========================================================================
-// MODELO DE SUSCRIPCIÓN
+// MODELO DE CONCURSOS (NUEVO)
+// =========================================================================
+
+model Contest {
+id                    String        @id @default(cuid())
+nombre                String        // Nombre del concurso
+slug                  String        @unique
+descripcion           String?       @db.Text
+imagenPrincipal       String?       // URL de Cloudinary
+imagenPublicId        String?       // Public ID de Cloudinary
+
+// Fechas importantes
+fechaInicio           DateTime
+fechaFin              DateTime?
+fechaInicioRegistro   DateTime?
+fechaFinRegistro      DateTime?
+
+// Ubicación y logística
+ubicacion             String?
+direccion             String?
+capacidadMaxima       Int?
+cuotaInscripcion      Decimal?      @db.Decimal(10, 2)
+
+// Información del concurso
+tipoGanado            TipoGanado[]
+categorias            String[]      // Array de categorías
+premiacion            Json?         // Estructura de premios en JSON
+reglamento            String?       @db.Text
+
+// Contacto
+contactoOrganizador   String?
+telefonoContacto      String?
+emailContacto         String?
+
+// Configuraciones
+requisitoEspeciales   String?       @db.Text
+isPublic              Boolean       @default(true)
+isActive              Boolean       @default(true)
+isFeatured            Boolean       @default(false)
+permitirRegistroTardio Boolean      @default(false)
+
+// Estado del concurso
+status                ContestStatus @default(BORRADOR)
+
+// SEO y Marketing
+metaTitle             String?
+metaDescription       String?
+tags                  String[]      // Tags para búsqueda
+
+// Estadísticas
+viewCount             Int           @default(0)
+participantCount      Int           @default(0)
+registrationCount     Int           @default(0)
+
+// Relaciones
+companyId             String
+company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+createdById           String?
+createdBy             User?         @relation("ContestCreator", fields: [createdById], references: [id])
+
+createdAt             DateTime      @default(now())
+updatedAt             DateTime      @updatedAt
+
+@@index([slug])
+@@index([companyId])
+@@index([status])
+@@index([isPublic])
+@@index([isFeatured])
+@@index([isActive])
+@@index([fechaInicio])
+@@index([fechaFin])
+@@index([createdById])
+@@index([createdAt])
+@@map("contests")
+}
+
+// =========================================================================
+// MODELO DE SUSCRIPCIÓN (MEJORADO)
 // =========================================================================
 
 model Subscription {
 id                String             @id @default(cuid())
 companyId         String             @unique
-company           Company            @relation(fields: [companyId], references: [id])
+company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
 plan              SubscriptionPlan   @default(BASICO)
 status            SubscriptionStatus @default(ACTIVO)
+
+// Límites y uso
 maxUsers          Int                @default(5)    // Límite de usuarios
 usersUsed         Int                @default(0)    // Usuarios utilizados
 maxStorage        Int                @default(1000) // Límite de almacenamiento en MB
 storageUsed       Int                @default(0)    // Almacenamiento utilizado
+maxConcursos      Int                @default(10)   // Límite de concursos
+concursosUsados   Int                @default(0)    // Concursos utilizados
+
+// Fechas importantes
 fechaInicio       DateTime           @default(now())
 fechaExpiracion   DateTime
 fechaRenovacion   DateTime?
-precio            Decimal            @db.Decimal(10, 2)
-notas             String?
+lastPayment       DateTime?
+nextPayment       DateTime?
 
-maxConcursos         Int                @default(10)   // Límite de concursos
-concursosUsados      Int                @default(0)    // Concursos utilizados
+// Información financiera
+precio            Decimal            @db.Decimal(10, 2)
+currency          String             @default("COP")
+paymentMethod     String?            // Método de pago
+transactionId     String?            // ID de transacción
+
+// Configuraciones
 contestAccessEnabled Boolean            @default(true) // Acceso global a concursos habilitado
+autoRenewal          Boolean            @default(false) // Renovación automática
+notificationsEnabled Boolean            @default(true)  // Notificaciones habilitadas
+
+// Notas administrativas
+notas             String?            @db.Text
+internalNotes     String?            @db.Text // Notas internas del admin
 
 createdAt         DateTime           @default(now())
 updatedAt         DateTime           @updatedAt
 
+@@index([status])
+@@index([fechaExpiracion])
+@@index([plan])
 @@map("subscriptions")
 }
 
 // =========================================================================
-// MODELO DE SOLICITUDES DE COMPAÑÍA
+// MODELO DE SOLICITUDES DE COMPAÑÍA (MEJORADO)
 // =========================================================================
 
 model CompanyRequest {
@@ -187,19 +355,22 @@ telefono          String?
 
 // Información de la compañía solicitada
 nombreCompania    String
-descripcionCompania String?
+descripcionCompania String?            @db.Text
 tipoOrganizacion  String?              // "Asociación Ganadera", "Cooperativa", etc.
 ubicacion         String?
 website           String?
+nit               String?              // NIT o identificación fiscal
 
 // Documentación de soporte
-documentos        String[]             // URLs de documentos subidos
-motivacion        String?              // Por qué quiere crear la compañía
-experiencia       String?              // Experiencia previa organizando eventos
+documentos        String[]             // URLs de documentos subidos (Cloudinary)
+documentosPublicIds String[]           // Public IDs de Cloudinary
+motivacion        String?              @db.Text // Por qué quiere crear la compañía
+experiencia       String?              @db.Text // Experiencia previa organizando eventos
 
 // Estado de la solicitud
 status            CompanyRequestStatus @default(PENDIENTE)
-notas             String?              // Notas del revisor
+notas             String?              @db.Text // Notas del revisor
+internalNotes     String?              @db.Text // Notas internas
 
 // Relaciones
 reviewedById      String?              // SUPERADMIN que revisó
@@ -210,23 +381,30 @@ reviewedAt        DateTime?
 companyId         String?              @unique
 company           Company?             @relation(fields: [companyId], references: [id])
 
+// Seguimiento
+priority          Int                  @default(1) // Prioridad de revisión (1-5)
+tags              String[]             // Tags para categorización
+
 createdAt         DateTime             @default(now())
 updatedAt         DateTime             @updatedAt
 
 @@index([status])
 @@index([email])
+@@index([reviewedById])
+@@index([priority])
+@@index([createdAt])
 @@map("company_requests")
 }
 
 // =========================================================================
-// MODELO DE NOTIFICACIONES
+// MODELO DE NOTIFICACIONES (MEJORADO)
 // =========================================================================
 
 model Notification {
 id          String             @id @default(cuid())
 type        NotificationType
 title       String
-message     String
+message     String             @db.Text
 status      NotificationStatus @default(UNREAD)
 
 // Datos adicionales en JSON
@@ -240,17 +418,24 @@ user        User?              @relation(fields: [userId], references: [id], onD
 entityType  String?            // "user", "company", "subscription", etc.
 entityId    String?            // ID de la entidad relacionada
 
+// Configuración de notificación
+priority    Int                @default(1) // Prioridad (1-5)
+expiresAt   DateTime?          // Fecha de expiración
+actionUrl   String?            // URL de acción
+
 createdAt   DateTime           @default(now())
 readAt      DateTime?
 
 @@index([userId, status])
 @@index([type])
+@@index([priority])
 @@index([createdAt])
+@@index([expiresAt])
 @@map("notifications")
 }
 
 // =========================================================================
-// MODELO DE AUDITORÍA
+// MODELO DE AUDITORÍA (MEJORADO)
 // =========================================================================
 
 model AuditLog {
@@ -262,6 +447,7 @@ entityId    String   // ID de la entidad afectada
 // Datos del cambio
 oldValues   Json?    // Valores anteriores
 newValues   Json?    // Valores nuevos
+changes     Json?    // Resumen de cambios específicos
 
 // Usuario que realizó la acción
 userId      String
@@ -270,29 +456,102 @@ user        User     @relation(fields: [userId], references: [id])
 // Información adicional
 ipAddress   String?
 userAgent   String?
+sessionId   String?  // ID de sesión
+requestId   String?  // ID de request para trazabilidad
+
+// Contexto adicional
+description String?  // Descripción legible del cambio
+severity    String   @default("info") // "info", "warning", "error"
+category    String?  // Categoría del cambio
 
 createdAt   DateTime @default(now())
 
 @@index([entityType, entityId])
 @@index([userId])
+@@index([action])
+@@index([severity])
 @@index([createdAt])
 @@map("audit_logs")
 }
-// MODELO DE ALERTAS DEL SISTEMA
+
+// =========================================================================
+// MODELO DE ALERTAS DEL SISTEMA (MEJORADO)
+// =========================================================================
 
 model Alert {
 id          String   @id @default(cuid())
-type        String   // e.g., "warning", "info", "error"
+type        String   // e.g., "warning", "info", "error", "success"
 title       String
-description String
+description String   @db.Text
 date        DateTime @default(now())
 priority    String   // e.g., "high", "medium", "low"
 isActive    Boolean  @default(true)
+isResolved  Boolean  @default(false)
+
+// Información adicional
+category    String?  // Categoría de la alerta
+entityType  String?  // Tipo de entidad relacionada
+entityId    String?  // ID de la entidad relacionada
+actionUrl   String?  // URL para resolver la alerta
+
+// Resolución
+resolvedAt  DateTime?
+resolvedBy  String?  // ID del usuario que resolvió
+resolution  String?  @db.Text // Descripción de la resolución
+
 createdAt   DateTime @default(now())
 updatedAt   DateTime @updatedAt
 
+@@index([type])
+@@index([priority])
+@@index([isActive])
+@@index([isResolved])
+@@index([createdAt])
 @@map("alerts")
 }
+
+// =========================================================================
+// MODELO DE ARCHIVOS/MEDIOS (NUEVO - PARA CLOUDINARY)
+// =========================================================================
+
+model Media {
+id          String   @id @default(cuid())
+filename    String   // Nombre original del archivo
+publicId    String   @unique // Public ID de Cloudinary
+url         String   // URL completa de Cloudinary
+secureUrl   String   // URL segura de Cloudinary
+format      String   // Formato del archivo (jpg, png, etc.)
+resourceType String  @default("image") // image, video, raw, auto
+bytes       Int      // Tamaño en bytes
+width       Int?     // Ancho (para imágenes)
+height      Int?     // Alto (para imágenes)
+
+// Información de contexto
+entityType  String?  // Tipo de entidad asociada
+entityId    String?  // ID de la entidad asociada
+folder      String?  // Carpeta en Cloudinary
+tags        String[] // Tags de Cloudinary
+
+// Usuario que subió el archivo
+uploadedById String?
+uploadedBy   User?   @relation(fields: [uploadedById], references: [id])
+
+// Metadatos
+alt         String?  // Texto alternativo
+caption     String?  // Descripción/caption
+metadata    Json?    // Metadatos adicionales de Cloudinary
+
+createdAt   DateTime @default(now())
+updatedAt   DateTime @updatedAt
+
+@@index([publicId])
+@@index([entityType, entityId])
+@@index([uploadedById])
+@@index([folder])
+@@index([createdAt])
+@@map("media")
+}
+
 
 // ENUMERACIONES FUTURAS (COMENTADAS PARA EXPANSIÓN)
 // =========================================================================

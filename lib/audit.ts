@@ -11,6 +11,16 @@ interface CreateAuditLogParams {
   userAgent?: string
 }
 
+interface LogActivityParams {
+  userId: string
+  action: string
+  entityType: string
+  entityId: string
+  details?: string
+  ipAddress?: string
+  userAgent?: string
+}
+
 export async function createAuditLog(params: CreateAuditLogParams) {
   try {
     const auditLog = await prisma.auditLog.create({
@@ -31,6 +41,36 @@ export async function createAuditLog(params: CreateAuditLogParams) {
   } catch (error) {
     console.error("Error creating audit log:", error)
     throw error
+  }
+}
+
+// Simple activity logging function
+export async function logActivity(params: LogActivityParams) {
+  try {
+    // For now, we'll just log to console since we don't have an activity log table
+    console.log(`Activity: ${params.action} ${params.entityType} ${params.entityId} by user ${params.userId}`)
+
+    // If you have an activity log table, uncomment and modify this:
+    /*
+    const activity = await prisma.activityLog.create({
+      data: {
+        userId: params.userId,
+        action: params.action,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        details: params.details,
+        ipAddress: params.ipAddress,
+        userAgent: params.userAgent,
+      },
+    })
+    return activity
+    */
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error logging activity:", error)
+    // Don't throw error to avoid breaking the main operation
+    return { success: false, error }
   }
 }
 

@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
               : "#FF8042",
     }))
 
-    // Si no hay datos, devolver datos por defecto
+    // Si no hay datos, devolver array vacío
     if (formattedData.length === 0) {
-      return NextResponse.json([{ name: "Sin suscripciones", value: 1, color: "#E5E7EB" }])
+      return NextResponse.json([])
     }
 
     return NextResponse.json(formattedData)

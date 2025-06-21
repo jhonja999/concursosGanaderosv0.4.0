@@ -18,8 +18,10 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  Trophy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 interface User {
   id: string
@@ -28,6 +30,17 @@ interface User {
   email: string
   role: string
   isSuperAdmin: boolean
+}
+
+interface Notification {
+  id: string
+  type: "alert" | "activity" | "system"
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  priority: "high" | "medium" | "low"
+  metadata?: any
 }
 
 const navigation = [
@@ -40,6 +53,16 @@ const navigation = [
     name: "Usuarios",
     href: "/admin/usuarios",
     icon: Users,
+  },
+  {
+    name: "Compañías",
+    href: "/admin/companias",
+    icon: Building2,
+  },
+  {
+    name: "Concursos",
+    href: "/admin/concursos",
+    icon: Trophy,
   },
   {
     name: "Suscripciones",
@@ -62,6 +85,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [pendingRequests, setPendingRequests] = useState(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   const checkAuth = useCallback(async () => {
     try {
@@ -104,17 +129,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [])
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/notifications")
+      if (response.ok) {
+        const data = await response.json()
+        // The API returns { notifications: [...], unreadCount: number }
+        setNotifications(Array.isArray(data.notifications) ? data.notifications : [])
+      } else {
+        console.error("Failed to fetch notifications")
+        setNotifications([]) // Ensure it's always an array
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      setNotifications([]) // Ensure it's always an array
+    }
+  }, [])
+
+  const markAllAsRead = () => {
+    const updatedNotifications = notifications.map((notification) => ({
+      ...notification,
+      isRead: true,
+    }))
+    setNotifications(updatedNotifications)
+
+    fetch("/api/admin/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "mark_all_read" }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error("Failed to mark all notifications as read on the server")
+        }
+      })
+      .catch((error) => {
+        console.error("Error marking all notifications as read:", error)
+      })
+  }
+
   useEffect(() => {
     // Solo ejecutar una vez al montar el componente
     checkAuth()
     fetchPendingRequests()
+    fetchNotifications()
 
     // Recuperar estado del sidebar del localStorage
     const savedCollapsed = localStorage.getItem("sidebar-collapsed")
     if (savedCollapsed) {
       setIsCollapsed(JSON.parse(savedCollapsed))
     }
-  }, [checkAuth, fetchPendingRequests])
+  }, [checkAuth, fetchPendingRequests, fetchNotifications])
 
   const handleLogout = async () => {
     try {
@@ -149,6 +214,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const sidebarWidth = isCollapsed ? "w-16" : "w-64"
   const mainMargin = isCollapsed ? "lg:ml-16" : "lg:ml-64"
+
+  const unreadNotificationsCount = notifications.filter((notification) => !notification.isRead).length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -288,9 +355,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <div className="relative">
+                      <Bell className="h-5 w-5" />
+                      {unreadNotificationsCount > 0 && (
+                        <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
+                          {unreadNotificationsCount}
+                        </div>
+                      )}
+                    </div>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right">
+                  <SheetHeader>
+                    <SheetTitle>Notifications</SheetTitle>
+                  </SheetHeader>
+                  <div className="divide-y divide-gray-200">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <div key={notification.id} className="py-4">
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs text-gray-500">{notification.createdAt.toString()}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No notifications</p>
+                    )}
+                  </div>
+                  {notifications.filter((notification) => !notification.isRead).length > 0 && (
+                    <Button onClick={markAllAsRead} className="mt-4">
+                      Mark all as read
+                    </Button>
+                  )}
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
