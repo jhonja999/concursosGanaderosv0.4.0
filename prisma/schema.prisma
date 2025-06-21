@@ -57,6 +57,52 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+// =========================================================================
+// ENUMERACIONES PARA GANADO
+// =========================================================================
+
+enum SexoGanado {
+  MACHO
+  HEMBRA
+}
+
+enum CategoriaGanado {
+  A_DIENTES_LECHE                    // A - Dientes de Leche
+  ADULTO_SENIOR                      // Adulto o Senior (desde 2 años adelante)
+  B_DOS_DIENTES_SIN_PARIR           // B - Dos Dientes (Sin haber parido)
+  C_DOS_DIENTES_LACTACION           // C - Dos Dientes Lactación
+  D_CUATRO_DIENTES_LACTACION        // D - Cuatro Dientes Lactación
+  E_SEIS_DIENTES_LACTACION          // E - Seis Dientes Lactación
+  F_BOCA_LLENA_LACTACION            // F - Boca Llena en Lactación
+  G_SECA_UNICA                      // G - Seca (haber parido) Única
+  JOVEN_JUNIOR                      // Joven o Junior (1 año mayor)
+  TERNERA_1_ANO_INTERMEDIA          // Ternera 1 año intermedia
+  TERNERA_1_ANO_MAYOR               // Ternera 1 año mayor
+  TERNERA_1_ANO_MENOR               // Ternera 1 año menor
+  TERNERA_MAYOR                     // Ternera Mayor
+  TERNERA_MENOR                     // Ternera Menor
+  TERNERA_MENOR_INTERMEDIA          // Ternera Menor Intermedia
+  VACA_2_ANOS_MAYOR_LACTACION       // Vaca 2 años mayor lactación
+  VACA_2_ANOS_MENOR_LACTACION       // Vaca 2 años menor lactación
+  VACA_3_ANOS_MAYOR_LACTACION       // Vaca 3 años mayor lactación
+  VACA_3_ANOS_MENOR_LACTACION       // Vaca 3 años menor lactación
+  VACA_4_ANOS_LACTACION             // Vaca 4 años lactación
+  VACA_5_ANOS_LACTACION             // Vaca 5 años en lactación
+  VACA_ADULTA_LACTACION             // Vaca Adulta en lactación
+  VACAS_SECA_UNICA                  // Vacas en seca (Categoría Única)
+}
+
+enum RazaGanado {
+  BROWN_SWISS_PDP                   // Brown Swiss PDP
+  BROWN_SWISS_PPC                   // Brown Swiss PPC
+  FLECKVIEH_PDP                     // Fleckvieh PDP
+  FLECKVIEH_PPC                     // Fleckvieh PPC
+  HOLSTEIN_PDP                      // Holstein PDP
+  HOLSTEIN_PPC                      // Holstein PPC
+  JERSEY_PDP                        // Jersey PDP
+  JERSEY_PPC                        // Jersey PPC
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -83,6 +129,7 @@ model User {
   companyRequestsReviewed CompanyRequest[]
   notifications           Notification[]
   auditLogs               AuditLog[]
+  ganadoCreated           Ganado[]
 
   @@map("users")
 }
@@ -136,6 +183,9 @@ model Company {
 
   // Relaciones
   users     User[]
+  ganado    Ganado[]
+  criadores Criador[]
+  establos  Establo[]
   
   // Solicitud original (si fue creada por solicitud)
   companyRequest CompanyRequest?
@@ -280,352 +330,99 @@ model AuditLog {
 }
 
 // =========================================================================
-// ENUMERACIONES FUTURAS (COMENTADAS PARA EXPANSIÓN)
-// =========================================================================
-
-// enum SexoGanado {
-//   MACHO                // Ganado macho
-//   HEMBRA               // Ganado hembra
-//   SIN_RESTRICCION      // Para categorías sin restricción de sexo
-// }
-
-// enum EstadoConcurso {
-//   BORRADOR             // En preparación
-//   INSCRIPCIONES_ABIERTAS // Aceptando inscripciones
-//   INSCRIPCIONES_CERRADAS // Inscripciones cerradas
-//   EN_EVALUACION        // En proceso de calificación
-//   FINALIZADO           // Concurso terminado
-// }
-
-// enum TipoConcurso {
-//   GANADO               // Concurso de ganado
-//   PRODUCTO             // Concurso de productos (café, lácteos, etc.)
-//   MIXTO                // Concurso que acepta ambos
-// }
-
-// enum TipoEvento {
-//   CONFERENCIA
-//   TALLER
-//   FERIA
-//   EXPOSICION
-//   NETWORKING
-//   PREMIACION
-// }
-
-// =========================================================================
-// MODELO DE USUARIO (CORE)
-// =========================================================================
-
-// =========================================================================
-// MODELO DE COMPAÑÍA
-// =========================================================================
-
-// =========================================================================
-// MODELOS FUTUROS PARA EXPANSIÓN (COMENTADOS)
-// =========================================================================
-
-// =========================================================================
-// MODELO DE CONCURSO MEJORADO
-// =========================================================================
-
-// model Concurso {
-//   id           String          @id @default(cuid())
-//   nombre       String
-//   slug         String          @unique
-//   descripcion  String?
-//   tipo         TipoConcurso    @default(GANADO)
-//   estado       EstadoConcurso  @default(BORRADOR)
-//   fechaInicio  DateTime
-//   fechaFin     DateTime
-//   fechaInscripcionInicio DateTime?
-//   fechaInscripcionFin    DateTime?
-//   ubicacion    String?
-//   direccion    String?
-//   premios      String?
-//   reglamento   String?
-//   imagen       String?
-//   isPublished  Boolean         @default(false)
-//   isFeatured   Boolean         @default(false)
-//   companyId    String
-//   company      Company         @relation(fields: [companyId], references: [id])
-//   createdById  String
-//   createdBy    User            @relation("ConcursoCreator", fields: [createdById], references: [id])
-//   createdAt    DateTime        @default(now())
-//   updatedAt    DateTime        @updatedAt
-
-//   // Relaciones
-//   categorias            ConcursoCategoria[]
-//   participantes         Participante[]
-//   concursoRegistradores ConcursoRegistrador[]
-//   events                Event[]
-
-//   @@index([companyId])
-//   @@map("concursos")
-// }
-
-// =========================================================================
-// MODELO DE CATEGORÍA DE CONCURSO (ESPECÍFICA POR CONCURSO)
-// =========================================================================
-
-// model ConcursoCategoria {
-//   id          String      @id @default(cuid())
-//   nombre      String
-//   descripcion String?
-//   orden       Int         @default(0)
-//   sexo        SexoGanado? // Para concursos de ganado
-//   edadMinima  Int?        // Edad mínima en días (opcional)
-//   edadMaxima  Int?        // Edad máxima en días (opcional)
-  
-//   // Para concursos de productos
-//   tipoProducto String?    // Ej: "Café Arábica", "Queso Fresco"
-//   criterios    String?    // Criterios de evaluación específicos
-  
-//   concursoId  String
-//   concurso    Concurso    @relation(fields: [concursoId], references: [id], onDelete: Cascade)
-//   createdAt   DateTime    @default(now())
-//   updatedAt   DateTime    @updatedAt
-
-//   // Relaciones
-//   participantes Participante[]
-
-//   @@index([concursoId])
-//   @@map("concurso_categorias")
-// }
-
-// =========================================================================
-// MODELO DE EXPOSITOR/PROPIETARIO
-// =========================================================================
-
-// model Expositor {
-//   id          String   @id @default(cuid())
-//   nombre      String
-//   apellido    String?
-//   empresa     String?
-//   telefono    String?
-//   email       String?
-//   direccion   String?
-//   documento   String?  // Cédula o NIT
-//   companyId   String   // Pertenece a una compañía
-//   company     Company  @relation(fields: [companyId], references: [id])
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   // Relaciones futuras
-//   ganado        Ganado[]
-//   participantes Participante[]
-//   products      Product[]
-
-//   @@index([companyId])
-//   @@map("expositores")
-// }
-
-// =========================================================================
 // MODELO DE GANADO MEJORADO
 // =========================================================================
 
-// model Ganado {
-//   id           String      @id @default(cuid())
-//   nombre       String
-//   slug         String      @unique
-//   fechaNac     DateTime?
-//   categoria    String?     // Campo para compatibilidad
-//   subcategoria String?     // Campo para compatibilidad
-//   establo      String?
-//   remate       Boolean?
-//   descripcion  String?
-//   raza         String?
-//   sexo         SexoGanado
-//   imagenurl   String?
-//   numRegistro  String?      
-//   puntaje      Int?
-//   peso         Decimal?    @db.Decimal(8, 2)
-//   isFeatured   Boolean     @default(false)
-//   isPublished  Boolean     @default(false)
-//   isGanadora   Boolean     @default(false)
-//   premios      String[]
+model Ganado {
+  id                String          @id @default(cuid())
+  nombre            String
+  fecha_nacimiento  String?         // Fecha como string para flexibilidad
+  dias_nacida       Int?            // Días desde nacimiento
+  categoria         CategoriaGanado
+  establo           String?
+  en_remate         Boolean         @default(false)
+  propietario       String?         // Nombre del propietario
+  descripcion       String?
+  raza              RazaGanado
+  peso              Decimal?        @db.Decimal(8, 2)
+  sexo              SexoGanado?
+  imagen_url        String?
+  puntaje           Float?
   
-//   // Relación con expositor
-//   expositorId  String?
-//   expositor    Expositor?  @relation(fields: [expositorId], references: [id])
+  // Relaciones
+  companyId         String
+  company           Company         @relation(fields: [companyId], references: [id])
+  criadorId         String?
+  criador           Criador?        @relation(fields: [criadorId], references: [id])
+  establoId         String?
+  establoRel        Establo?        @relation(fields: [establoId], references: [id])
   
-//   createdAt    DateTime    @default(now())
-//   updatedAt    DateTime    @updatedAt
-
-//   @@index([expositorId])
-//   @@map("ganado")
-// }
+  // Metadatos
+  createdById       String
+  createdBy         User            @relation(fields: [createdById], references: [id])
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  
+  @@index([companyId])
+  @@index([criadorId])
+  @@index([categoria])
+  @@index([raza])
+  @@map("ganado")
+}
 
 // =========================================================================
-// MODELO DE PRODUCTO MEJORADO PARA CONCURSOS
+// MODELO DE CRIADOR
 // =========================================================================
 
-// model Product {
-//   id           String      @id @default(cuid())
-//   name         String
-//   slug         String      @unique
-//   description  String?     @db.Text
-//   price        Float?      // Opcional para productos de concurso
-//   comparePrice Float?
-//   images       String[]
-//   videos       String[]
-//   ingredients  String?     @db.Text
+model Criador {
+  id            String   @id @default(cuid())
+  nombre        String
+  apellido      String?
+  nombreCompleto String  // Campo calculado para búsquedas
+  telefono      String?
+  email         String?
+  direccion     String?
+  documento     String?  // Cédula o documento de identidad
+  notas         String?
   
-//   // Campos específicos para concursos
-//   origen       String?     // Origen del producto
-//   proceso      String?     // Proceso de elaboración
-//   certificaciones String[] // Certificaciones del producto
+  // Relaciones
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  ganado        Ganado[]
   
-//   companyId    String      // Pertenece a una compañía
-//   company      Company     @relation(fields: [companyId], references: [id])
-//   categoryId   String?     // Categoría general del producto
-//   expositorId  String?     // Relación con expositor
+  // Metadatos
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-//   // Relaciones futuras
-//   variants     Variant[]
-//   attributes   Attribute[]
-//   participantes Participante[] // Productos que participan en concursos
-  
-//   isFeatured   Boolean     @default(false)
-//   isPublished  Boolean     @default(false)
-//   stock        Int         @default(0)
-//   createdAt    DateTime    @default(now())
-//   updatedAt    DateTime    @updatedAt
-
-//   category  Category?  @relation(fields: [categoryId], references: [id])
-//   expositor Expositor? @relation(fields: [expositorId], references: [id])
-
-//   @@index([companyId])
-//   @@index([categoryId])
-//   @@index([expositorId])
-//   @@map("products")
-// }
+  @@unique([companyId, nombreCompleto])
+  @@index([companyId])
+  @@index([nombreCompleto])
+  @@map("criadores")
+}
 
 // =========================================================================
-// MODELO DE PARTICIPANTE MEJORADO
+// MODELO DE ESTABLO
 // =========================================================================
 
-// model Participante {
-//   id           String    @id @default(cuid())
-//   numeroFicha  String
+model Establo {
+  id          String   @id @default(cuid())
+  nombre      String
+  ubicacion   String?
+  descripcion String?
+  capacidad   Int?
   
-//   // Información del participante/expositor
-//   expositorId  String?
-//   expositor    Expositor? @relation(fields: [expositorId], references: [id])
+  // Relaciones
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  ganado      Ganado[]
   
-//   // Para compatibilidad con sistema anterior
-//   propietario  String?
-//   telefono     String?
-//   email        String?
+  // Metadatos
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-//   concursoId   String
-//   concurso     Concurso  @relation(fields: [concursoId], references: [id])
-//   categoriaId  String
-//   categoria    ConcursoCategoria @relation(fields: [categoriaId], references: [id])
-  
-//   // Relación polimórfica: puede ser ganado o producto
-//   ganadoId     String?
-//   ganado       Ganado?   @relation(fields: [ganadoId], references: [id])
-//   productId    String?
-//   product      Product?  @relation(fields: [productId], references: [id])
-  
-//   // Información de la participación
-//   posicion     Int?      // Posición obtenida
-//   puntaje      Float?    // Puntaje obtenido
-//   observaciones String?
-  
-//   registradoPor String
-//   registrador  User      @relation(fields: [registradoPor], references: [id])
-//   createdAt    DateTime  @default(now())
-//   updatedAt    DateTime  @updatedAt
-
-//   @@unique([concursoId, numeroFicha])
-//   @@index([expositorId])
-//   @@index([ganadoId])
-//   @@index([productId])
-//   @@map("participantes")
-// }
-
-// =========================================================================
-// MODELOS DE CATEGORÍAS (FUTURO)
-// =========================================================================
-
-// model Category {
-//   id          String       @id @default(cuid())
-//   name        String
-//   slug        String       @unique
-//   description String?      @db.Text
-//   image       String?
-//   parentId    String?
-//   parent      Category?    @relation("SubCategories", fields: [parentId], references: [id])
-//   subCategories Category[] @relation("SubCategories")
-//   featured    Boolean      @default(false)
-//   companyId   String       // Categorías por compañía
-//   company     Company      @relation(fields: [companyId], references: [id])
-//   createdAt   DateTime     @default(now())
-//   updatedAt   DateTime     @updatedAt
-
-//   Product Product[]
-
-//   @@index([companyId])
-//   @@map("categories")
-// }
-
-// =========================================================================
-// MODELOS DE EVENTOS (FUTURO)
-// =========================================================================
-
-// model Event {
-//   id          String      @id @default(cuid())
-//   titulo      String
-//   slug        String      @unique
-//   descripcion String?
-//   tipo        TipoEvento
-//   fechaInicio DateTime
-//   fechaFin    DateTime?
-//   ubicacion   String?
-//   direccion   String?
-//   precio      Decimal?    @db.Decimal(10, 2)
-//   capacidad   Int?
-//   imagen      String?
-//   isFeatured  Boolean     @default(false)
-//   isPublished Boolean     @default(false)
-//   companyId   String
-//   company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-//   concursoId  String?     // Opcional: evento asociado a un concurso
-//   concurso    Concurso?   @relation(fields: [concursoId], references: [id])
-//   createdById String
-//   createdBy   User        @relation(fields: [createdById], references: [id])
-//   createdAt   DateTime    @default(now())
-//   updatedAt   DateTime    @updatedAt
-
-//   @@index([companyId])
-//   @@index([concursoId])
-//   @@map("events")
-// }
-
-// =========================================================================
-// MODELOS DE CONTACTO EMPRESARIAL (FUTURO)
-// =========================================================================
-
-// model Contact {
-//   id          String   @id @default(cuid())
-//   nombre      String
-//   apellido    String?
-//   cargo       String?
-//   telefono    String?
-//   email       String?
-//   whatsapp    String?
-//   linkedin    String?
-//   descripcion String?
-//   isPrimary   Boolean  @default(false) // Contacto principal
-//   isPublic    Boolean  @default(true)  // Visible públicamente
-//   companyId   String
-//   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-//   createdById String
-//   createdBy   User     @relation(fields: [createdById], references: [id])
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-
-//   @@index([companyId])
-//   @@map("contacts")
-// }
+  @@unique([companyId, nombre])
+  @@index([companyId])
+  @@map("establos")
+}
