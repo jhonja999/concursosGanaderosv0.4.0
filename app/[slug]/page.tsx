@@ -7,6 +7,7 @@ import { Calendar, MapPin, Users, DollarSign, Trophy, Building2, Globe, Phone, M
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
+import { SponsorsSection } from "@/components/shared/sponsors-section"
 
 interface Contest {
   id: string
@@ -29,6 +30,12 @@ interface Contest {
   contactoOrganizador?: string
   telefonoContacto?: string
   emailContacto?: string
+  auspiciadores?: Array<{
+    id: string
+    nombre: string
+    imagen: string
+    website?: string
+  }>
   company: {
     id: string
     nombre: string
@@ -41,7 +48,7 @@ interface Contest {
 
 async function getContest(slug: string): Promise<Contest | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/contests/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/concursos/${slug}`, {
       cache: "no-store",
     })
 
@@ -197,6 +204,11 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
                   <p className="text-gray-700 whitespace-pre-line">{contest.reglamento}</p>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Sponsors */}
+            {contest.auspiciadores && contest.auspiciadores.length > 0 && (
+              <SponsorsSection auspiciadores={contest.auspiciadores} title="Nuestros Auspiciadores" />
             )}
           </div>
 

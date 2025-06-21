@@ -242,6 +242,7 @@ tipoGanado            TipoGanado[]
 categorias            String[]      // Array de categorías
 premiacion            Json?         // Estructura de premios en JSON
 reglamento            String?       @db.Text
+auspiciadores         Json?         // Array de auspiciadores: [{ nombre: string, imagen: string, id: string }]
 
 // Contacto
 contactoOrganizador   String?
