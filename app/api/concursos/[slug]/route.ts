@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(request: NextRequest, context: { params: { slug: string } }) {
-  const slug = context.params.slug // Correct way to access route parameters
+export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
+  const { slug } = await context.params // Await params before accessing properties
 
   if (!slug) {
     return NextResponse.json({ message: "Slug no proporcionado" }, { status: 400 })

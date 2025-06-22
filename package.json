@@ -13,7 +13,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@prisma/client": "latest",
     "@radix-ui/react-accordion": "latest",
-    "@radix-ui/react-alert-dialog": "latest",
+    "@radix-ui/react-alert-dialog": "latest", 
     "@radix-ui/react-aspect-ratio": "latest",
     "@radix-ui/react-avatar": "latest",
     "@radix-ui/react-checkbox": "latest",

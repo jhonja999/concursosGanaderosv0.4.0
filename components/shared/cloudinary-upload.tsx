@@ -24,6 +24,7 @@ import {
   RefreshCw,
   FlipHorizontal,
   Smartphone,
+  Settings,
 } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
@@ -142,6 +143,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [isLoadingCameras, setIsLoadingCameras] = useState(false)
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   // Duplicate detection states
   const [existingImage, setExistingImage] = useState<ExistingImageInfo | null>(null)
@@ -152,12 +155,36 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Memoized values
   const isMobile = useMemo(() => {
     if (typeof window === "undefined") return false
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   }, [])
+
+  // Enhanced camera cleanup
+  const cleanupCamera = useCallback(async () => {
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => {
+        track.stop()
+        track.enabled = false
+      })
+      setCameraStream(null)
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+
+    // Wait for camera to be fully released
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }, [cameraStream])
 
   // Stable callback functions
   const checkExistingImage = useCallback(
@@ -511,20 +538,27 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const getAvailableCameras = useCallback(async () => {
     try {
       setIsLoadingCameras(true)
+      setCameraError(null)
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
         throw new Error("La enumeración de dispositivos no es compatible")
       }
 
+      // Request permissions first
       try {
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
         tempStream.getTracks().forEach((track) => track.stop())
+        await new Promise((resolve) => setTimeout(resolve, 100))
       } catch (e) {
-        console.warn("Could not get temporary stream for device enumeration")
+        console.warn("Could not get temporary stream for device enumeration:", e)
       }
 
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter((device) => device.kind === "videoinput")
+
+      if (videoDevices.length === 0) {
+        throw new Error("No se encontraron cámaras en este dispositivo")
+      }
 
       const cameras: CameraDevice[] = videoDevices.map((device, index) => {
         const label = device.label || `Cámara ${index + 1}`
@@ -562,7 +596,9 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
       return cameras
     } catch (error) {
       console.error("Error getting cameras:", error)
-      toast.error("No se pudieron detectar las cámaras disponibles")
+      const errorMessage = error instanceof Error ? error.message : "No se pudieron detectar las cámaras disponibles"
+      setCameraError(errorMessage)
+      toast.error(errorMessage)
       return []
     } finally {
       setIsLoadingCameras(false)
@@ -570,62 +606,92 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   }, [selectedCamera, isMobile])
 
   const startCamera = useCallback(
-    async (deviceId?: string) => {
+    async (deviceId?: string, useBasicConfig = false) => {
       try {
+        setCameraError(null)
+        setIsSwitchingCamera(true)
+
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error("La cámara no es compatible con este navegador")
         }
 
-        if (cameraStream) {
-          cameraStream.getTracks().forEach((track) => track.stop())
-          // Add small delay to ensure camera is released
-          await new Promise((resolve) => setTimeout(resolve, 100))
-        }
+        // Cleanup previous camera
+        await cleanupCamera()
 
-        let constraints: MediaStreamConstraints = {
-          audio: false,
-          video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-          },
-        }
+        let constraints: MediaStreamConstraints
 
-        if (deviceId) {
+        if (useBasicConfig) {
+          // Basic configuration for problematic cameras
           constraints = {
             audio: false,
-            video: {
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 },
-              deviceId: { exact: deviceId },
-            },
+            video: deviceId
+              ? { deviceId: { exact: deviceId } }
+              : {
+                  width: { ideal: 640 },
+                  height: { ideal: 480 },
+                  frameRate: { ideal: 15 },
+                },
           }
         } else {
+          // Advanced configuration
           constraints = {
             audio: false,
-            video: {
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 },
-              facingMode: { ideal: cameraFacing },
-            },
+            video: deviceId
+              ? {
+                  deviceId: { exact: deviceId },
+                  width: { ideal: 1280, max: 1920 },
+                  height: { ideal: 720, max: 1080 },
+                  frameRate: { ideal: 30, max: 60 },
+                }
+              : {
+                  width: { ideal: 1280, max: 1920 },
+                  height: { ideal: 720, max: 1080 },
+                  frameRate: { ideal: 30, max: 60 },
+                  facingMode: { ideal: cameraFacing },
+                },
           }
         }
 
+        console.log("Starting camera with constraints:", constraints)
+
         const stream = await navigator.mediaDevices.getUserMedia(constraints)
+
+        // Set timeout to detect if camera fails to start properly
+        streamTimeoutRef.current = setTimeout(() => {
+          if (!videoRef.current?.videoWidth) {
+            console.warn("Camera stream timeout - no video data received")
+            cleanupCamera()
+            setCameraError("La cámara no responde. Intenta con otra cámara o reinicia la página.")
+          }
+        }, 10000) // 10 second timeout
+
         setCameraStream(stream)
         setShowCamera(true)
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           videoRef.current.onloadedmetadata = () => {
+            if (streamTimeoutRef.current) {
+              clearTimeout(streamTimeoutRef.current)
+              streamTimeoutRef.current = null
+            }
             videoRef.current?.play().catch((e) => {
               console.warn("Video autoplay failed:", e)
             })
           }
+
+          videoRef.current.onerror = (e) => {
+            console.error("Video element error:", e)
+            setCameraError("Error en el elemento de video")
+            cleanupCamera()
+          }
         }
 
-        if (!isSwitchingCamera) {
+        if (!isSwitchingCamera && retryCount === 0) {
           toast.success("Cámara activada correctamente")
         }
+
+        setRetryCount(0) // Reset retry count on success
       } catch (error) {
         console.error("Camera error:", error)
         let errorMessage = "No se pudo acceder a la cámara"
@@ -638,59 +704,39 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
           } else if (error.name === "NotSupportedError") {
             errorMessage = "La cámara no es compatible con este navegador."
           } else if (error.name === "NotReadableError") {
-            errorMessage =
-              "La cámara está siendo usada por otra aplicación. Cierra otras aplicaciones que puedan estar usando la cámara."
+            errorMessage = "La cámara está siendo usada por otra aplicación o hay un problema de hardware."
           } else if (error.name === "OverconstrainedError") {
             errorMessage = "La cámara seleccionada no soporta la configuración requerida."
           }
         }
 
-        toast.error(errorMessage)
+        setCameraError(errorMessage)
 
-        // Try with basic constraints as fallback for NotReadableError
-        if (error instanceof Error && error.name === "NotReadableError" && !deviceId) {
-          try {
-            console.log("Trying basic camera configuration...")
-            const basicStream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-              },
-            })
-            setCameraStream(basicStream)
-            setShowCamera(true)
-
-            if (videoRef.current) {
-              videoRef.current.srcObject = basicStream
-              videoRef.current.onloadedmetadata = () => {
-                videoRef.current?.play().catch((e) => {
-                  console.warn("Video autoplay failed:", e)
-                })
-              }
-            }
-
-            toast.success("Cámara activada con configuración básica")
-            return
-          } catch (basicError) {
-            console.error("Basic camera configuration failed:", basicError)
-          }
+        // Try with basic configuration if advanced failed and this is not already a retry
+        if (!useBasicConfig && retryCount < 2) {
+          console.log("Retrying with basic camera configuration...")
+          setRetryCount((prev) => prev + 1)
+          setTimeout(() => {
+            startCamera(deviceId, true)
+          }, 1000)
+          return
         }
 
+        toast.error(errorMessage)
         setShowCamera(false)
       } finally {
         setIsSwitchingCamera(false)
       }
     },
-    [cameraStream, cameraFacing, isSwitchingCamera],
+    [cleanupCamera, cameraFacing, isSwitchingCamera, retryCount],
   )
 
-  const stopCamera = useCallback(() => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-      setCameraStream(null)
-    }
+  const stopCamera = useCallback(async () => {
+    await cleanupCamera()
     setShowCamera(false)
-  }, [cameraStream])
+    setCameraError(null)
+    setRetryCount(0)
+  }, [cleanupCamera])
 
   // Enhanced camera switching
   const switchCamera = useCallback(async () => {
@@ -699,12 +745,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
     setIsSwitchingCamera(true)
 
     // Stop current camera first
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-      setCameraStream(null)
-      // Wait for camera to be fully released
-      await new Promise((resolve) => setTimeout(resolve, 200))
-    }
+    await cleanupCamera()
 
     const currentIndex = availableCameras.findIndex((cam) => cam.deviceId === selectedCamera)
     const nextIndex = (currentIndex + 1) % availableCameras.length
@@ -721,7 +762,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
       toast.error("Error al cambiar de cámara")
       setIsSwitchingCamera(false)
     }
-  }, [availableCameras, selectedCamera, startCamera, cameraStream])
+  }, [availableCameras, selectedCamera, startCamera, cleanupCamera])
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) {
@@ -762,7 +803,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
       })
 
       await createPreview(file)
-      stopCamera()
+      await stopCamera()
       toast.success("Foto capturada exitosamente")
     } catch (error) {
       console.error("Error capturing photo:", error)
@@ -773,9 +814,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   // Cleanup effect
   useEffect(() => {
     return () => {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((track) => track.stop())
-      }
+      cleanupCamera()
       if (previewFile?.preview) {
         URL.revokeObjectURL(previewFile.preview)
       }
@@ -1092,6 +1131,44 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
             </TabsContent>
 
             <TabsContent value="camera" className="space-y-4">
+              {cameraError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p className="font-medium">Error de Cámara:</p>
+                      <p>{cameraError}</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCameraError(null)
+                            setRetryCount(0)
+                            getAvailableCameras()
+                          }}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reintentar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCameraError(null)
+                            setRetryCount(0)
+                            startCamera(selectedCamera, true)
+                          }}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Modo Básico
+                        </Button>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {!showCamera ? (
                 <div className="space-y-4">
                   <div className="text-center space-y-4">
@@ -1226,6 +1303,9 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
                   </li>
                   <li>
                     • <strong>Formulario Seguro:</strong> No se cierra accidentalmente al subir imágenes
+                  </li>
+                  <li>
+                    • <strong>Recuperación de Errores:</strong> Reintentos automáticos y modo básico disponible
                   </li>
                   <li>
                     • <strong>Límites:</strong> Máximo 10MB, formatos: {acceptedFormats.join(", ").toUpperCase()}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, Star, Users, Trophy, BarChart3 } from "lucide-react";
+import Image from "next/image";
+import { Check, Star, Users, Trophy, BarChart3, MilkIcon as Cow, Calendar, Building, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,10 +10,75 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
+import { prisma } from "@/lib/prisma";
+import AnimalSlider from "@/components/AnimalSlider";
 
-export default function HomePage() {
+// Tipos simplificados según el schema real
+type ContestWithCompany = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  fechaInicio: Date;
+  company: {
+    nombre: string;
+  } | null;
+};
+
+type GanadoSimple = {
+  id: string;
+  nombre: string;
+  raza: string | null;
+};
+
+export default async function HomePage() {
+  // Obtener concursos (usando campos que existen)
+  let concursos: ContestWithCompany[] = [];
+  try {
+    const contestsData = await prisma.contest.findMany({
+      where: {
+        // Usar solo campos que existen en el schema
+        isActive: true,
+      },
+      orderBy: {
+        fechaInicio: "desc",
+      },
+      take: 3,
+      include: {
+        company: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+    });
+    concursos = contestsData;
+  } catch (error) {
+    console.log("Error fetching contests:", error);
+    concursos = [];
+  }
+
+  // Obtener ganado (usando campos que existen)
+  let ganado: GanadoSimple[] = [];
+  try {
+    const ganadoData = await prisma.ganado.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 4,
+      select: {
+        id: true,
+        nombre: true,
+        raza: true,
+      },
+    });
+    ganado = ganadoData;
+  } catch (error) {
+    console.log("Error fetching ganado:", error);
+    ganado = [];
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
@@ -65,11 +131,25 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="w-full h-screen relative overflow-hidden bg-gradient-to-br from-emerald-600 to-green-400">
+      {/* Hero Section with Background Image and Slider */}
+      <section className="w-full h-screen relative overflow-hidden">
+        {/* Imagen de fondo */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            alt="Paisaje ganadero"
+            className="object-cover w-full h-full"
+            src="/landingImages/landscape.webp"
+            fill
+            priority
+            loading="eager"
+          />
+        </div>
+
+        {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60 z-10"></div>
 
-        <div className="container mx-auto relative z-20 h-full flex flex-col items-center justify-center text-center px-4 md:px-6">
+        {/* Contenido Hero */}
+        <div className="container mx-auto relative z-20 h-3/6 flex flex-col items-center justify-center text-center px-4 md:px-6">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white">
               Lo Mejor de Mi Tierra
@@ -78,7 +158,7 @@ export default function HomePage() {
               La plataforma líder para concursos ganaderos. Reconocemos tu
               dedicación y pasión por tus animales.
             </p>
-
+{/* 
             <div className="flex flex-col gap-4 sm:flex-row sm:gap-6 justify-center">
               <Link href="/registro">
                 <Button
@@ -92,12 +172,138 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-2 border-white text-emerald-600 hover:bg-white hover:text-emerald-600 rounded-full py-4 px-8 text-lg transition-all duration-300 hover:scale-105 active:scale-95"
+                  className="border-2 border-white text-white hover:bg-white hover:text-emerald-600 rounded-full py-4 px-8 text-lg transition-all duration-300 hover:scale-105 active:scale-95"
                 >
                   Explorar Concursos
                 </Button>
               </Link>
+            </div> */}
+          </div>
+        </div>
+
+        {/* Componente Slider de Animales */}
+        <AnimalSlider />
+      </section>
+
+      {/* Concursos Destacados */}
+      <section className="w-full py-12 md:py-24 bg-neutral-900 text-center">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="space-y-2 max-w-3xl mx-auto">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-white">
+                Concursos Destacados
+              </h2>
+              <p className="mx-auto text-gray-300 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Descubre los próximos eventos y concursos ganaderos más
+                importantes.
+              </p>
             </div>
+          </div>
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+            {concursos.length > 0 ? (
+              concursos.map((concurso) => (
+                <Link key={concurso.id} href={`/concursos/${concurso.id}`}>
+                  <div className="flex flex-col h-full rounded-xl border bg-card text-card-foreground shadow transition-all hover:shadow-lg hover:scale-105">
+                    <div className="p-6 flex flex-col space-y-4 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-emerald-600" />
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(concurso.fechaInicio)}
+                        </p>
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <h3 className="text-xl font-bold">{concurso.nombre}</h3>
+                        <p className="text-muted-foreground line-clamp-3">
+                          {concurso.descripcion || "Sin descripción"}
+                        </p>
+                      </div>
+                      <div className="mt-auto pt-4 flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          {concurso.company?.nombre || "Sin empresa"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-400">No hay concursos destacados disponibles</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-center mt-8">
+            <Link href="/concursos">
+              <Button variant="outline" className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white">
+                Ver todos los concursos
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Ganado Destacado */}
+      <section className="w-full py-12 md:py-24 bg-muted text-center">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="space-y-2 max-w-3xl mx-auto">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Ganado Destacado
+              </h2>
+              <p className="mx-auto text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Conoce los ejemplares más destacados de nuestros concursos.
+              </p>
+            </div>
+          </div>
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-8">
+            {ganado.length > 0 ? (
+              ganado.map((animal) => (
+                <Link key={animal.id} href={`/ganado/${animal.id}`}>
+                  <div className="flex flex-col h-full rounded-xl border bg-card text-card-foreground shadow transition-all hover:shadow-lg hover:scale-105">
+                    <div className="relative aspect-square">
+                      <Image
+                        alt={animal.nombre}
+                        className="rounded-t-xl object-cover"
+                        fill
+                        src="/landingImages/cow.webp"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-emerald-600 text-white">
+                          Destacado
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="p-4 flex flex-col space-y-2 text-left">
+                      <h3 className="font-bold">{animal.nombre}</h3>
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Ganado
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Cow className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          {animal.raza || "Raza no especificada"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-400">No hay ganado destacado disponible</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-center mt-8">
+            <Link href="/ganado">
+              <Button variant="outline" className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white">
+                Ver todo el ganado
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -481,7 +687,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-emerald-600 hover:bg-white/20 hover:text-white px-8 py-4"
+                  className="border-white text-black hover:bg-white hover:text-emerald-600 px-8 py-4"
                 >
                   Iniciar Sesión
                 </Button>
@@ -498,7 +704,7 @@ export default function HomePage() {
             <div>
               <Logo size="md" className="mb-4" href="/" />
               <p className="text-gray-300">
-                La plataforma líder para concursos ganaderos en Colombia.
+                La plataforma líder para concursos ganaderos en Perú.
               </p>
             </div>
             <div>
