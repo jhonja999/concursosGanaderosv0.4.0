@@ -252,7 +252,7 @@ cuotaInscripcion      Decimal?      @db.Decimal(10, 2)
 
 // Información del concurso
 tipoGanado            TipoGanado[] // Tipos generales permitidos
-// categorias            String[]      // Array de categorías -> REEMPLAZADO POR ContestCategory model
+categorias            String[]      // Array de categorías (for backward compatibility)
 premiacion            Json?         // Estructura de premios en JSON
 reglamento            String?       @db.Text
 auspiciadores         Json?         // Array de auspiciadores: [{ nombre: string, imagen: string, id: string }] // Considerar mover a tabla
@@ -336,6 +336,7 @@ model ContestCategory {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  @@unique([contestId, nombre])
   @@index([contestId])
   @@map("contest_categories")
 }
@@ -644,6 +645,7 @@ model Propietario {
 
   @@index([email])
   @@index([companyId])
+  @@unique([companyId, nombreCompleto], name: "companyId_nombreCompleto")
   @@map("propietarios")
 }
 
@@ -670,6 +672,7 @@ model Expositor {
 
   @@index([email])
   @@index([companyId])
+  @@unique([companyId, nombreCompleto], name: "companyId_nombreCompleto")
   @@map("expositores")
 }
 
@@ -704,8 +707,8 @@ model Ganado {
   isGanador         Boolean   @default(false) // Si ha ganado algo
   premiosObtenidos  String[]  // Lista de premios ganados
 
-  // Puntuación en el concurso
-  puntaje           Float?
+  // Puntuación en el concurso - NUEVO CAMPO
+  puntaje           Float?    // Puntaje obtenido en el concurso (0-100)
 
   // Relaciones
   companyId         String?   // Compañía dueña del animal (inventario general)
@@ -736,5 +739,6 @@ model Ganado {
   @@index([expositorId])
   @@index([contestId])
   @@index([contestCategoryId])
+  @@index([puntaje]) // Nuevo índice para puntaje
   @@map("ganado")
 }

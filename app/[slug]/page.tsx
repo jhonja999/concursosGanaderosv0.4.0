@@ -3,7 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, MapPin, Users, DollarSign, Trophy, Building2, Globe, Phone, Mail, CalendarDays } from "lucide-react"
+import {
+  Calendar,
+  MapPin,
+  Users,
+  DollarSign,
+  Trophy,
+  Building2,
+  Globe,
+  Phone,
+  Mail,
+  CalendarDays,
+  Eye,
+} from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -41,6 +53,7 @@ interface Contest {
   contactoOrganizador?: string
   telefonoContacto?: string
   emailContacto?: string
+  participantCount?: number
   auspiciadores?: Array<{
     id: string
     nombre: string
@@ -126,13 +139,25 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
                   <span>{contest.ubicacion}</span>
                 </div>
               )}
-              {contest.capacidadMaxima && (
+              {contest.participantCount && contest.participantCount > 0 && (
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  <span>Hasta {contest.capacidadMaxima} participantes</span>
+                  <span>{contest.participantCount} participantes</span>
                 </div>
               )}
             </div>
+
+            {/* Botón para ver participantes */}
+            {contest.participantCount && contest.participantCount > 0 && (
+              <div className="mt-8">
+                <Button size="lg" variant="secondary" asChild>
+                  <Link href={`/${slug}/participantes`}>
+                    <Eye className="h-5 w-5 mr-2" />
+                    Ver Participantes ({contest.participantCount})
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -262,6 +287,32 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Participantes */}
+            {contest.participantCount && contest.participantCount > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Participantes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-4">
+                    <div className="text-3xl font-bold text-primary mb-2">{contest.participantCount}</div>
+                    <p className="text-gray-600 mb-4">
+                      {contest.participantCount === 1 ? "Animal registrado" : "Animales registrados"}
+                    </p>
+                    <Button className="w-full" asChild>
+                      <Link href={`/${slug}/participantes`}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Todos los Participantes
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Registration Info */}
             <Card>
               <CardHeader>

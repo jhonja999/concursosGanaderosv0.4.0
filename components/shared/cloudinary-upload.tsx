@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef, useCallback, useEffect } from "react"
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +8,6 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Upload,
@@ -24,8 +21,9 @@ import {
   Camera,
   Loader2,
   RotateCcw,
-  Video,
   RefreshCw,
+  FlipHorizontal,
+  Smartphone,
 } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
@@ -33,7 +31,8 @@ import { DuplicateImageDialog } from "./duplicate-image-dialog"
 
 interface CloudinaryUploadProps {
   value?: string
-  onChange: (url: string) => void
+  onChange?: (url: string) => void
+  onSuccess?: (url: string) => void
   folder?: string
   label?: string
   description?: string
@@ -42,6 +41,10 @@ interface CloudinaryUploadProps {
   alt?: string
   caption?: string
   className?: string
+  resourceType?: "image" | "video" | "raw" | "auto"
+  maxFiles?: number
+  disabled?: boolean
+  acceptedFormats?: string[]
 }
 
 interface PreviewFile {
@@ -66,9 +69,51 @@ interface ExistingImageInfo {
   size?: number
 }
 
-export function CloudinaryUpload({
+// Memoized utility functions
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes"
+  const k = 1024
+  const sizes = ["Bytes", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+}
+
+const formatUploadDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const validateFile = (file: File, acceptedFormats: string[]): { isValid: boolean; error?: string } => {
+  const allowedTypes = acceptedFormats.map((format) => `image/${format}`)
+  const maxSizeBytes = 10 * 1024 * 1024 // 10MB
+
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      error: `Tipo de archivo no válido. Solo se permiten: ${acceptedFormats.join(", ").toUpperCase()}`,
+    }
+  }
+
+  if (file.size > maxSizeBytes) {
+    return {
+      isValid: false,
+      error: "El archivo es demasiado grande. Máximo 10MB",
+    }
+  }
+
+  return { isValid: true }
+}
+
+export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   value,
   onChange,
+  onSuccess,
   folder = "uploads",
   label = "Imagen",
   description = "Sube una imagen",
@@ -77,136 +122,111 @@ export function CloudinaryUpload({
   alt,
   caption,
   className = "",
+  resourceType = "image",
+  maxFiles = 1,
+  disabled = false,
+  acceptedFormats = ["jpg", "jpeg", "png", "gif", "webp"],
 }: CloudinaryUploadProps) {
+  // Core upload states
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null)
   const [imageUrl, setImageUrl] = useState("")
   const [dragActive, setDragActive] = useState(false)
+
+  // Camera states
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [showCamera, setShowCamera] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
   const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string>("")
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [isLoadingCameras, setIsLoadingCameras] = useState(false)
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false)
 
-  // New states for duplicate detection
+  // Duplicate detection states
   const [existingImage, setExistingImage] = useState<ExistingImageInfo | null>(null)
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
 
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Detect mobile device
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
-    }
-    checkMobile()
+  // Memoized values
+  const isMobile = useMemo(() => {
+    if (typeof window === "undefined") return false
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   }, [])
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
+  // Stable callback functions
+  const checkExistingImage = useCallback(
+    async (filename: string) => {
+      setIsCheckingDuplicate(true)
+      try {
+        const response = await fetch("/api/upload/check-existing", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename,
+            folder,
+            entityType,
+          }),
+        })
 
-  const formatUploadDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+        if (response.ok) {
+          const existingInfo: ExistingImageInfo = await response.json()
+          setExistingImage(existingInfo)
 
-  const validateFile = (file: File): { isValid: boolean; error?: string } => {
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
-    const maxSizeBytes = 10 * 1024 * 1024 // 10MB
-
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        isValid: false,
-        error: "Tipo de archivo no válido. Solo se permiten: JPG, PNG, GIF, WebP",
-      }
-    }
-
-    if (file.size > maxSizeBytes) {
-      return {
-        isValid: false,
-        error: "El archivo es demasiado grande. Máximo 10MB",
-      }
-    }
-
-    return { isValid: true }
-  }
-
-  // Check for existing image with same filename
-  const checkExistingImage = async (filename: string) => {
-    setIsCheckingDuplicate(true)
-    try {
-      const response = await fetch("/api/upload/check-existing", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename,
-          folder,
-          entityType,
-        }),
-      })
-
-      if (response.ok) {
-        const existingInfo: ExistingImageInfo = await response.json()
-        setExistingImage(existingInfo)
-
-        if (existingInfo.exists) {
-          setShowDuplicateDialog(true)
-          return true
+          if (existingInfo.exists) {
+            setShowDuplicateDialog(true)
+            return true
+          }
         }
+        return false
+      } catch (error) {
+        console.error("Error checking existing image:", error)
+        return false
+      } finally {
+        setIsCheckingDuplicate(false)
       }
-      return false
-    } catch (error) {
-      console.error("Error checking existing image:", error)
-      return false
-    } finally {
-      setIsCheckingDuplicate(false)
-    }
-  }
+    },
+    [folder, entityType],
+  )
 
-  const createPreview = async (file: File) => {
-    const validation = validateFile(file)
-    if (!validation.isValid) {
-      toast.error(validation.error)
-      return
-    }
+  const createPreview = useCallback(
+    async (file: File) => {
+      const validation = validateFile(file, acceptedFormats)
+      if (!validation.isValid) {
+        toast.error(validation.error)
+        return
+      }
 
-    const preview = URL.createObjectURL(file)
-    setPreviewFile({
-      file,
-      preview,
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.type,
-    })
+      const preview = URL.createObjectURL(file)
+      const newPreviewFile = {
+        file,
+        preview,
+        name: file.name,
+        size: formatFileSize(file.size),
+        type: file.type,
+      }
 
-    // Check for existing image with same filename
-    await checkExistingImage(file.name)
-  }
+      setPreviewFile(newPreviewFile)
+      await checkExistingImage(file.name)
+    },
+    [acceptedFormats, checkExistingImage],
+  )
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    const file = files[0]
-    createPreview(file)
-  }
+  const handleFileSelect = useCallback(
+    (files: FileList | null) => {
+      if (!files || files.length === 0) return
+      const file = files[0]
+      createPreview(file)
+    },
+    [createPreview],
+  )
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -218,67 +238,82 @@ export function CloudinaryUpload({
     }
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragActive(false)
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files)
-    }
-  }, [])
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileSelect(e.dataTransfer.files)
+      }
+    },
+    [handleFileSelect],
+  )
 
-  const uploadFile = async (file: File, forceOverwrite = false) => {
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("folder", folder)
-    formData.append("forceOverwrite", forceOverwrite.toString())
-    if (entityType) formData.append("entityType", entityType)
-    if (entityId) formData.append("entityId", entityId)
-    if (alt) formData.append("alt", alt)
-    if (caption) formData.append("caption", caption)
+  const uploadFile = useCallback(
+    async (file: File, forceOverwrite = false) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", folder)
+      formData.append("forceOverwrite", forceOverwrite.toString())
+      if (entityType) formData.append("entityType", entityType)
+      if (entityId) formData.append("entityId", entityId)
+      if (alt) formData.append("alt", alt)
+      if (caption) formData.append("caption", caption)
 
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || "Error al subir la imagen")
-    }
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al subir la imagen")
+      }
 
-    return response.json()
-  }
+      return response.json()
+    },
+    [folder, entityType, entityId, alt, caption],
+  )
 
-  const uploadFromUrl = async (url: string, forceOverwrite = false) => {
-    const formData = new FormData()
-    formData.append("imageUrl", url)
-    formData.append("folder", folder)
-    formData.append("forceOverwrite", forceOverwrite.toString())
-    if (entityType) formData.append("entityType", entityType)
-    if (entityId) formData.append("entityId", entityId)
-    if (alt) formData.append("alt", alt)
-    if (caption) formData.append("caption", caption)
+  const uploadFromUrl = useCallback(
+    async (url: string, forceOverwrite = false) => {
+      const formData = new FormData()
+      formData.append("imageUrl", url)
+      formData.append("folder", folder)
+      formData.append("forceOverwrite", forceOverwrite.toString())
+      if (entityType) formData.append("entityType", entityType)
+      if (entityId) formData.append("entityId", entityId)
+      if (alt) formData.append("alt", alt)
+      if (caption) formData.append("caption", caption)
 
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || "Error al subir la imagen desde URL")
-    }
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al subir la imagen desde URL")
+      }
 
-    return response.json()
-  }
+      return response.json()
+    },
+    [folder, entityType, entityId, alt, caption],
+  )
 
-  // Handle duplicate dialog actions
-  const handleUseExisting = () => {
+  // Stable upload handlers with form preservation
+  const handleUseExisting = useCallback(() => {
     if (existingImage?.image?.secure_url) {
-      onChange(existingImage.image.secure_url)
-      toast.success("Imagen existente seleccionada")
+      const url = existingImage.image.secure_url
+      // Prevent form submission/closure
+      setTimeout(() => {
+        onChange?.(url)
+        onSuccess?.(url)
+        toast.success("Imagen existente seleccionada")
+      }, 0)
+
       setShowDuplicateDialog(false)
       setExistingImage(null)
       if (previewFile) {
@@ -286,9 +321,9 @@ export function CloudinaryUpload({
         setPreviewFile(null)
       }
     }
-  }
+  }, [existingImage, onChange, onSuccess, previewFile])
 
-  const handleOverwrite = async () => {
+  const handleOverwrite = useCallback(async () => {
     if (!previewFile) return
 
     setShowDuplicateDialog(false)
@@ -306,13 +341,17 @@ export function CloudinaryUpload({
         })
       }, 200)
 
-      const result = await uploadFile(previewFile.file, true) // Force overwrite
+      const result = await uploadFile(previewFile.file, true)
 
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      onChange(result.url)
-      toast.success("Imagen sobrescrita exitosamente")
+      // Prevent form submission/closure
+      setTimeout(() => {
+        onChange?.(result.url)
+        onSuccess?.(result.url)
+        toast.success("Imagen sobrescrita exitosamente")
+      }, 0)
 
       URL.revokeObjectURL(previewFile.preview)
       setPreviewFile(null)
@@ -324,9 +363,9 @@ export function CloudinaryUpload({
       setIsUploading(false)
       setUploadProgress(0)
     }
-  }
+  }, [previewFile, uploadFile, onChange, onSuccess])
 
-  const handleUploadNew = async () => {
+  const handleUploadNew = useCallback(async () => {
     if (!previewFile) return
 
     setShowDuplicateDialog(false)
@@ -344,13 +383,17 @@ export function CloudinaryUpload({
         })
       }, 200)
 
-      const result = await uploadFile(previewFile.file, false) // Don't overwrite, create new
+      const result = await uploadFile(previewFile.file, false)
 
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      onChange(result.url)
-      toast.success("Nueva imagen subida exitosamente")
+      // Prevent form submission/closure
+      setTimeout(() => {
+        onChange?.(result.url)
+        onSuccess?.(result.url)
+        toast.success("Nueva imagen subida exitosamente")
+      }, 0)
 
       URL.revokeObjectURL(previewFile.preview)
       setPreviewFile(null)
@@ -362,284 +405,49 @@ export function CloudinaryUpload({
       setIsUploading(false)
       setUploadProgress(0)
     }
-  }
+  }, [previewFile, uploadFile, onChange, onSuccess])
 
-  // Get available cameras
-  const getAvailableCameras = useCallback(async () => {
+  const handleSaveFile = useCallback(async () => {
+    if (!previewFile || existingImage?.exists) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
     try {
-      setIsLoadingCameras(true)
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        throw new Error("La enumeración de dispositivos no es compatible")
-      }
-
-      // Request permission first to get device labels
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
-        tempStream.getTracks().forEach((track) => track.stop())
-      } catch (e) {
-        console.warn("Could not get temporary stream for device enumeration")
-      }
-
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter((device) => device.kind === "videoinput")
-
-      const cameras: CameraDevice[] = videoDevices.map((device, index) => {
-        const label = device.label || `Cámara ${index + 1}`
-        let facingMode = "unknown"
-
-        // Try to detect facing mode from label
-        const labelLower = label.toLowerCase()
-        if (labelLower.includes("front") || labelLower.includes("user") || labelLower.includes("frontal")) {
-          facingMode = "user"
-        } else if (
-          labelLower.includes("back") ||
-          labelLower.includes("rear") ||
-          labelLower.includes("environment") ||
-          labelLower.includes("trasera")
-        ) {
-          facingMode = "environment"
-        }
-
-        return {
-          deviceId: device.deviceId,
-          label: label,
-          facingMode: facingMode,
-        }
-      })
-
-      setAvailableCameras(cameras)
-
-      // Auto-select first camera if none selected
-      if (cameras.length > 0 && !selectedCamera) {
-        // Prefer back camera on mobile, front on desktop
-        const preferredCamera = isMobile
-          ? cameras.find((cam) => cam.facingMode === "environment") || cameras[0]
-          : cameras.find((cam) => cam.facingMode === "user") || cameras[0]
-
-        setSelectedCamera(preferredCamera.deviceId)
-      }
-
-      return cameras
-    } catch (error) {
-      console.error("Error getting cameras:", error)
-      toast.error("No se pudieron detectar las cámaras disponibles")
-      return []
-    } finally {
-      setIsLoadingCameras(false)
-    }
-  }, [selectedCamera, isMobile])
-
-  // Camera functions
-  const startCamera = useCallback(
-    async (deviceId?: string) => {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("La cámara no es compatible con este navegador")
-        }
-
-        // Stop existing stream
-        if (cameraStream) {
-          cameraStream.getTracks().forEach((track) => track.stop())
-        }
-
-        let constraints: MediaStreamConstraints = {
-          audio: false,
-          video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-          },
-        }
-
-        // Use specific device if provided
-        if (deviceId) {
-          constraints = {
-            audio: false,
-            video: {
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 },
-              deviceId: { exact: deviceId },
-            },
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
           }
-        } else {
-          // Use facing mode as fallback
-          constraints = {
-            audio: false,
-            video: {
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 },
-              facingMode: { ideal: cameraFacing },
-            },
-          }
-        }
+          return prev + 10
+        })
+      }, 200)
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-        setCameraStream(stream)
-        setShowCamera(true)
+      const result = await uploadFile(previewFile.file, false)
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
+      clearInterval(progressInterval)
+      setUploadProgress(100)
 
-          // Wait for video to load before allowing capture
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch((e) => {
-              console.warn("Video autoplay failed:", e)
-            })
-          }
-        }
-
-        toast.success("Cámara activada correctamente")
-      } catch (error) {
-        console.error("Camera error:", error)
-        let errorMessage = "No se pudo acceder a la cámara"
-
-        if (error instanceof Error) {
-          if (error.name === "NotAllowedError") {
-            errorMessage = "Permisos de cámara denegados. Por favor permite el acceso a la cámara."
-          } else if (error.name === "NotFoundError") {
-            errorMessage = "No se encontró ninguna cámara en este dispositivo."
-          } else if (error.name === "NotSupportedError") {
-            errorMessage = "La cámara no es compatible con este navegador."
-          } else if (error.name === "NotReadableError") {
-            errorMessage = "La cámara está siendo usada por otra aplicación."
-          } else if (error.name === "OverconstrainedError") {
-            errorMessage = "La cámara seleccionada no soporta la configuración requerida."
-          }
-        }
-
-        toast.error(errorMessage)
-        setShowCamera(false)
-
-        // Try with basic constraints as fallback
-        if (deviceId) {
-          try {
-            const basicConstraints: MediaStreamConstraints = {
-              video: true,
-              audio: false,
-            }
-            const stream = await navigator.mediaDevices.getUserMedia(basicConstraints)
-            setCameraStream(stream)
-            setShowCamera(true)
-
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream
-              videoRef.current.onloadedmetadata = () => {
-                videoRef.current?.play().catch((e) => {
-                  console.warn("Video autoplay failed:", e)
-                })
-              }
-            }
-
-            toast.success("Cámara activada con configuración básica")
-          } catch (fallbackError) {
-            console.error("Fallback camera error:", fallbackError)
-          }
-        }
-      }
-    },
-    [cameraStream, cameraFacing],
-  )
-
-  const stopCamera = useCallback(() => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-      setCameraStream(null)
-    }
-    setShowCamera(false)
-  }, [cameraStream])
-
-  const capturePhoto = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) {
-      toast.error("Error al acceder a la cámara")
-      return
-    }
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const context = canvas.getContext("2d")
-
-    if (!context) {
-      toast.error("Error al procesar la imagen")
-      return
-    }
-
-    // Wait for video to be ready
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      toast.error("La cámara aún no está lista. Intenta de nuevo.")
-      return
-    }
-
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    // Draw the current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Convert canvas to blob with better error handling
-    try {
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, "image/jpeg", 0.8)
-      })
-
-      if (!blob) {
-        toast.error("Error al capturar la imagen")
-        return
-      }
-
-      const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      })
-
-      createPreview(file)
-      stopCamera()
-      toast.success("Foto capturada exitosamente")
-    } catch (error) {
-      console.error("Error capturing photo:", error)
-      toast.error("Error al procesar la foto")
-    }
-  }, [stopCamera])
-
-  const handleSaveFile = async () => {
-    if (!previewFile) return
-
-    // If no duplicate found, upload normally
-    if (!existingImage?.exists) {
-      setIsUploading(true)
-      setUploadProgress(0)
-
-      try {
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => {
-            if (prev >= 90) {
-              clearInterval(progressInterval)
-              return 90
-            }
-            return prev + 10
-          })
-        }, 200)
-
-        const result = await uploadFile(previewFile.file, false)
-
-        clearInterval(progressInterval)
-        setUploadProgress(100)
-
-        onChange(result.url)
+      // Prevent form submission/closure
+      setTimeout(() => {
+        onChange?.(result.url)
+        onSuccess?.(result.url)
         toast.success("Imagen subida exitosamente")
+      }, 0)
 
-        URL.revokeObjectURL(previewFile.preview)
-        setPreviewFile(null)
-      } catch (error) {
-        console.error("Error uploading file:", error)
-        toast.error(error instanceof Error ? error.message : "Error al subir la imagen")
-      } finally {
-        setIsUploading(false)
-        setUploadProgress(0)
-      }
+      URL.revokeObjectURL(previewFile.preview)
+      setPreviewFile(null)
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      toast.error(error instanceof Error ? error.message : "Error al subir la imagen")
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
     }
-  }
+  }, [previewFile, existingImage, uploadFile, onChange, onSuccess])
 
-  const handleSaveUrl = async () => {
+  const handleSaveUrl = useCallback(async () => {
     if (!imageUrl.trim()) {
       toast.error("Por favor ingresa una URL válida")
       return
@@ -664,8 +472,13 @@ export function CloudinaryUpload({
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      onChange(result.url)
-      toast.success("Imagen subida exitosamente desde URL")
+      // Prevent form submission/closure
+      setTimeout(() => {
+        onChange?.(result.url)
+        onSuccess?.(result.url)
+        toast.success("Imagen subida exitosamente desde URL")
+      }, 0)
+
       setImageUrl("")
     } catch (error) {
       console.error("Error uploading from URL:", error)
@@ -674,40 +487,300 @@ export function CloudinaryUpload({
       setIsUploading(false)
       setUploadProgress(0)
     }
-  }
+  }, [imageUrl, uploadFromUrl, onChange, onSuccess])
 
-  const handleCancelPreview = () => {
+  const handleCancelPreview = useCallback(() => {
     if (previewFile) {
       URL.revokeObjectURL(previewFile.preview)
       setPreviewFile(null)
     }
     setExistingImage(null)
     setShowDuplicateDialog(false)
-  }
+  }, [previewFile])
 
-  const handleRemoveImage = () => {
-    onChange("")
-    toast.success("Imagen eliminada")
-  }
+  const handleRemoveImage = useCallback(() => {
+    // Prevent form submission/closure
+    setTimeout(() => {
+      onChange?.("")
+      onSuccess?.("")
+      toast.success("Imagen eliminada")
+    }, 0)
+  }, [onChange, onSuccess])
 
-  // Load cameras when camera tab is accessed
-  useEffect(() => {
-    if (showCamera && availableCameras.length === 0) {
-      getAvailableCameras()
+  // Enhanced camera functions
+  const getAvailableCameras = useCallback(async () => {
+    try {
+      setIsLoadingCameras(true)
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        throw new Error("La enumeración de dispositivos no es compatible")
+      }
+
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
+        tempStream.getTracks().forEach((track) => track.stop())
+      } catch (e) {
+        console.warn("Could not get temporary stream for device enumeration")
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter((device) => device.kind === "videoinput")
+
+      const cameras: CameraDevice[] = videoDevices.map((device, index) => {
+        const label = device.label || `Cámara ${index + 1}`
+        let facingMode = "unknown"
+
+        const labelLower = label.toLowerCase()
+        if (labelLower.includes("front") || labelLower.includes("user") || labelLower.includes("frontal")) {
+          facingMode = "user"
+        } else if (
+          labelLower.includes("back") ||
+          labelLower.includes("rear") ||
+          labelLower.includes("environment") ||
+          labelLower.includes("trasera")
+        ) {
+          facingMode = "environment"
+        }
+
+        return {
+          deviceId: device.deviceId,
+          label: label,
+          facingMode: facingMode,
+        }
+      })
+
+      setAvailableCameras(cameras)
+
+      if (cameras.length > 0 && !selectedCamera) {
+        const preferredCamera = isMobile
+          ? cameras.find((cam) => cam.facingMode === "environment") || cameras[0]
+          : cameras.find((cam) => cam.facingMode === "user") || cameras[0]
+
+        setSelectedCamera(preferredCamera.deviceId)
+      }
+
+      return cameras
+    } catch (error) {
+      console.error("Error getting cameras:", error)
+      toast.error("No se pudieron detectar las cámaras disponibles")
+      return []
+    } finally {
+      setIsLoadingCameras(false)
     }
-  }, [showCamera, availableCameras.length, getAvailableCameras])
+  }, [selectedCamera, isMobile])
 
-  // Cleanup
+  const startCamera = useCallback(
+    async (deviceId?: string) => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("La cámara no es compatible con este navegador")
+        }
+
+        if (cameraStream) {
+          cameraStream.getTracks().forEach((track) => track.stop())
+          // Add small delay to ensure camera is released
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+
+        let constraints: MediaStreamConstraints = {
+          audio: false,
+          video: {
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+          },
+        }
+
+        if (deviceId) {
+          constraints = {
+            audio: false,
+            video: {
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+              deviceId: { exact: deviceId },
+            },
+          }
+        } else {
+          constraints = {
+            audio: false,
+            video: {
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+              facingMode: { ideal: cameraFacing },
+            },
+          }
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        setCameraStream(stream)
+        setShowCamera(true)
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch((e) => {
+              console.warn("Video autoplay failed:", e)
+            })
+          }
+        }
+
+        if (!isSwitchingCamera) {
+          toast.success("Cámara activada correctamente")
+        }
+      } catch (error) {
+        console.error("Camera error:", error)
+        let errorMessage = "No se pudo acceder a la cámara"
+
+        if (error instanceof Error) {
+          if (error.name === "NotAllowedError") {
+            errorMessage = "Permisos de cámara denegados. Por favor permite el acceso a la cámara."
+          } else if (error.name === "NotFoundError") {
+            errorMessage = "No se encontró ninguna cámara en este dispositivo."
+          } else if (error.name === "NotSupportedError") {
+            errorMessage = "La cámara no es compatible con este navegador."
+          } else if (error.name === "NotReadableError") {
+            errorMessage =
+              "La cámara está siendo usada por otra aplicación. Cierra otras aplicaciones que puedan estar usando la cámara."
+          } else if (error.name === "OverconstrainedError") {
+            errorMessage = "La cámara seleccionada no soporta la configuración requerida."
+          }
+        }
+
+        toast.error(errorMessage)
+
+        // Try with basic constraints as fallback for NotReadableError
+        if (error instanceof Error && error.name === "NotReadableError" && !deviceId) {
+          try {
+            console.log("Trying basic camera configuration...")
+            const basicStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+              },
+            })
+            setCameraStream(basicStream)
+            setShowCamera(true)
+
+            if (videoRef.current) {
+              videoRef.current.srcObject = basicStream
+              videoRef.current.onloadedmetadata = () => {
+                videoRef.current?.play().catch((e) => {
+                  console.warn("Video autoplay failed:", e)
+                })
+              }
+            }
+
+            toast.success("Cámara activada con configuración básica")
+            return
+          } catch (basicError) {
+            console.error("Basic camera configuration failed:", basicError)
+          }
+        }
+
+        setShowCamera(false)
+      } finally {
+        setIsSwitchingCamera(false)
+      }
+    },
+    [cameraStream, cameraFacing, isSwitchingCamera],
+  )
+
+  const stopCamera = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop())
+      setCameraStream(null)
+    }
+    setShowCamera(false)
+  }, [cameraStream])
+
+  // Enhanced camera switching
+  const switchCamera = useCallback(async () => {
+    if (availableCameras.length < 2) return
+
+    setIsSwitchingCamera(true)
+
+    // Stop current camera first
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop())
+      setCameraStream(null)
+      // Wait for camera to be fully released
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+
+    const currentIndex = availableCameras.findIndex((cam) => cam.deviceId === selectedCamera)
+    const nextIndex = (currentIndex + 1) % availableCameras.length
+    const nextCamera = availableCameras[nextIndex]
+
+    setSelectedCamera(nextCamera.deviceId)
+    setCameraFacing(nextCamera.facingMode === "user" ? "user" : "environment")
+
+    try {
+      await startCamera(nextCamera.deviceId)
+      toast.success(`Cambiado a cámara ${nextCamera.facingMode === "user" ? "frontal" : "trasera"}`)
+    } catch (error) {
+      console.error("Error switching camera:", error)
+      toast.error("Error al cambiar de cámara")
+      setIsSwitchingCamera(false)
+    }
+  }, [availableCameras, selectedCamera, startCamera, cameraStream])
+
+  const capturePhoto = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) {
+      toast.error("Error al acceder a la cámara")
+      return
+    }
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const context = canvas.getContext("2d")
+
+    if (!context) {
+      toast.error("Error al procesar la imagen")
+      return
+    }
+
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error("La cámara aún no está lista. Intenta de nuevo.")
+      return
+    }
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", 0.8)
+      })
+
+      if (!blob) {
+        toast.error("Error al capturar la imagen")
+        return
+      }
+
+      const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      })
+
+      await createPreview(file)
+      stopCamera()
+      toast.success("Foto capturada exitosamente")
+    } catch (error) {
+      console.error("Error capturing photo:", error)
+      toast.error("Error al procesar la foto")
+    }
+  }, [createPreview, stopCamera])
+
+  // Cleanup effect
   useEffect(() => {
     return () => {
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop())
       }
-      if (previewFile?.preview && previewFile.file) {
+      if (previewFile?.preview) {
         URL.revokeObjectURL(previewFile.preview)
       }
     }
-  }, [cameraStream, previewFile])
+  }, []) // Empty dependency array for cleanup only
 
   // Show current image if exists
   if (value && !previewFile) {
@@ -739,7 +812,7 @@ export function CloudinaryUpload({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="w-full"
-              disabled={isUploading}
+              disabled={isUploading || disabled}
             >
               <Upload className="h-4 w-4 mr-2" />
               Cambiar imagen
@@ -747,7 +820,7 @@ export function CloudinaryUpload({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={acceptedFormats.map((f) => `image/${f}`).join(",")}
               onChange={(e) => handleFileSelect(e.target.files)}
               className="hidden"
             />
@@ -806,7 +879,6 @@ export function CloudinaryUpload({
                 </div>
               </div>
 
-              {/* Show existing image info if found */}
               {existingImage?.exists && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
@@ -889,7 +961,6 @@ export function CloudinaryUpload({
           </CardContent>
         </Card>
 
-        {/* Duplicate Detection Dialog */}
         <DuplicateImageDialog
           open={showDuplicateDialog}
           onOpenChange={setShowDuplicateDialog}
@@ -945,7 +1016,9 @@ export function CloudinaryUpload({
                   </div>
                   <div>
                     <p className="text-sm font-medium">{description}</p>
-                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, WebP hasta 10MB</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {acceptedFormats.join(", ").toUpperCase()} hasta 10MB
+                    </p>
                     <p className="text-xs text-blue-600 mt-1">
                       <AlertCircle className="h-3 w-3 inline mr-1" />
                       Se detectarán automáticamente archivos duplicados
@@ -956,7 +1029,7 @@ export function CloudinaryUpload({
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
+                    disabled={isUploading || disabled}
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Seleccionar archivo
@@ -965,7 +1038,7 @@ export function CloudinaryUpload({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={acceptedFormats.map((f) => `image/${f}`).join(",")}
                   onChange={(e) => handleFileSelect(e.target.files)}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -984,7 +1057,7 @@ export function CloudinaryUpload({
                     placeholder="https://ejemplo.com/imagen.jpg"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    disabled={isUploading}
+                    disabled={isUploading || disabled}
                   />
                 </div>
 
@@ -998,7 +1071,11 @@ export function CloudinaryUpload({
                   </div>
                 )}
 
-                <Button onClick={handleSaveUrl} disabled={!imageUrl.trim() || isUploading} className="w-full">
+                <Button
+                  onClick={handleSaveUrl}
+                  disabled={!imageUrl.trim() || isUploading || disabled}
+                  className="w-full"
+                >
                   {isUploading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1017,33 +1094,6 @@ export function CloudinaryUpload({
             <TabsContent value="camera" className="space-y-4">
               {!showCamera ? (
                 <div className="space-y-4">
-                  {/* Camera Selection */}
-                  {availableCameras.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm">Seleccionar cámara</Label>
-                      <Select value={selectedCamera} onValueChange={setSelectedCamera}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Elige una cámara" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCameras.map((camera) => (
-                            <SelectItem key={camera.deviceId} value={camera.deviceId}>
-                              <div className="flex items-center gap-2">
-                                <Video className="h-4 w-4" />
-                                <span>{camera.label}</span>
-                                {camera.facingMode !== "unknown" && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {camera.facingMode === "user" ? "Frontal" : "Trasera"}
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
                   <div className="text-center space-y-4">
                     <div className="p-6 bg-muted rounded-lg">
                       <Camera className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
@@ -1064,7 +1114,7 @@ export function CloudinaryUpload({
                     <div className="flex gap-2">
                       <Button
                         onClick={() => startCamera(selectedCamera)}
-                        disabled={isUploading || isLoadingCameras}
+                        disabled={isUploading || isLoadingCameras || disabled}
                         className="flex-1"
                       >
                         {isLoadingCameras ? (
@@ -1099,22 +1149,45 @@ export function CloudinaryUpload({
                       muted
                       className="w-full h-64 object-cover rounded-lg bg-black"
                     />
-                    {!videoRef.current?.videoWidth && (
+                    {(isSwitchingCamera || !videoRef.current?.videoWidth) && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                        <div className="text-center text-white">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                          <p className="text-sm">{isSwitchingCamera ? "Cambiando cámara..." : "Cargando cámara..."}</p>
+                        </div>
                       </div>
                     )}
 
-                    {/* Camera info overlay */}
                     <div className="absolute top-2 left-2">
                       <Badge variant="outline" className="bg-black/50 text-white border-white/20">
-                        {availableCameras.find((cam) => cam.deviceId === selectedCamera)?.label || "Cámara activa"}
+                        <Smartphone className="h-3 w-3 mr-1" />
+                        {availableCameras.find((cam) => cam.deviceId === selectedCamera)?.facingMode === "user"
+                          ? "Frontal"
+                          : "Trasera"}
                       </Badge>
                     </div>
+
+                    {availableCameras.length > 1 && (
+                      <div className="absolute top-2 right-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={switchCamera}
+                          disabled={isUploading || disabled || isSwitchingCamera}
+                          className="bg-black/50 text-white border-white/20 hover:bg-black/70"
+                        >
+                          <FlipHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2">
-                    <Button onClick={capturePhoto} disabled={isUploading} className="flex-1">
+                    <Button
+                      onClick={capturePhoto}
+                      disabled={isUploading || disabled || isSwitchingCamera}
+                      className="flex-1"
+                    >
                       {isUploading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1128,23 +1201,7 @@ export function CloudinaryUpload({
                       )}
                     </Button>
 
-                    {availableCameras.length > 1 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          const currentIndex = availableCameras.findIndex((cam) => cam.deviceId === selectedCamera)
-                          const nextIndex = (currentIndex + 1) % availableCameras.length
-                          const nextCamera = availableCameras[nextIndex]
-                          setSelectedCamera(nextCamera.deviceId)
-                          startCamera(nextCamera.deviceId)
-                        }}
-                        disabled={isUploading}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-
-                    <Button variant="outline" onClick={stopCamera} disabled={isUploading}>
+                    <Button variant="outline" onClick={stopCamera} disabled={isUploading || disabled}>
                       <X className="h-4 w-4 mr-2" />
                       Cancelar
                     </Button>
@@ -1155,30 +1212,23 @@ export function CloudinaryUpload({
             </TabsContent>
           </Tabs>
 
-          {/* Usage Information */}
           <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium mb-1">Detección Inteligente de Duplicados:</p>
+                <p className="font-medium mb-1">Funciones Mejoradas:</p>
                 <ul className="space-y-0.5">
                   <li>
-                    • <strong>Mismo nombre:</strong> Se detectará automáticamente y podrás elegir qué hacer
+                    • <strong>Cambio de Cámara:</strong> Toca el ícono de voltear para cambiar entre frontal/trasera
                   </li>
                   <li>
-                    • <strong>Usar existente:</strong> Reutilizar la imagen ya subida
+                    • <strong>Detección de Duplicados:</strong> Se verifican automáticamente archivos existentes
                   </li>
                   <li>
-                    • <strong>Sobrescribir:</strong> Reemplazar la imagen existente
+                    • <strong>Formulario Seguro:</strong> No se cierra accidentalmente al subir imágenes
                   </li>
                   <li>
-                    • <strong>Subir nueva:</strong> Crear una versión con nombre único
-                  </li>
-                  <li>
-                    • <strong>Límites:</strong> Máximo 10MB, hasta 25 megapíxeles
-                  </li>
-                  <li>
-                    • <strong>Formatos:</strong> JPG, PNG, GIF, WebP
+                    • <strong>Límites:</strong> Máximo 10MB, formatos: {acceptedFormats.join(", ").toUpperCase()}
                   </li>
                 </ul>
               </div>
@@ -1188,4 +1238,4 @@ export function CloudinaryUpload({
       </CardContent>
     </Card>
   )
-}
+})

@@ -26,6 +26,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             logo: true,
           },
         },
+        contestCategories: {
+          orderBy: { orden: "asc" },
+          select: {
+            id: true,
+            nombre: true,
+            orden: true,
+          },
+        },
       },
     })
 
@@ -34,9 +42,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Transform the data to include tipoConcurso for backward compatibility
+    // and sync categorias with contestCategories
     const transformedContest = {
       ...contest,
       tipoConcurso: contest.tipoGanado?.[0] || "",
+      categorias: contest.contestCategories.map((cat) => cat.nombre), // Sync with ContestCategory records
     }
 
     return NextResponse.json({ contest: transformedContest })
@@ -146,8 +156,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Prepare JSON data for Prisma
     const premiacionData = premiacion !== undefined ? (premiacion ? { descripcion: premiacion } : null) : undefined
 
-    // Update contest using the unchecked input to allow companyId
-    const contest = await prisma.contest.update({
+    // First, update the contest
+    const updatedContest = await prisma.contest.update({
       where: { id },
       data: {
         nombre,
@@ -184,6 +194,68 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         companyId: companyId,
         updatedAt: new Date(),
       },
+    })
+
+    // Then, synchronize ContestCategory records if categorias is provided
+    if (categorias !== undefined) {
+      const newCategoryNames = Array.isArray(categorias)
+        ? categorias.map((name) => String(name).trim()).filter((name) => name !== "")
+        : []
+
+      console.log("Synchronizing categories:", newCategoryNames)
+
+      // Get existing categories for this contest
+      const existingCategories = await prisma.contestCategory.findMany({
+        where: { contestId: id },
+        select: { id: true, nombre: true },
+      })
+
+      // Delete categories that are no longer in the list (only if they have no participants)
+      const categoriesToDelete = existingCategories.filter(
+        (existingCat) => !newCategoryNames.includes(existingCat.nombre),
+      )
+
+      for (const categoryToDelete of categoriesToDelete) {
+        const participantsInCategory = await prisma.ganado.count({
+          where: { contestCategoryId: categoryToDelete.id },
+        })
+        if (participantsInCategory === 0) {
+          await prisma.contestCategory.delete({
+            where: { id: categoryToDelete.id },
+          })
+          console.log(`Deleted category: ${categoryToDelete.nombre}`)
+        } else {
+          console.log(`Kept category ${categoryToDelete.nombre} because it has ${participantsInCategory} participants`)
+        }
+      }
+
+      // Create or update categories using upsert for better performance
+      for (let i = 0; i < newCategoryNames.length; i++) {
+        const categoryName = newCategoryNames[i]
+
+        await prisma.contestCategory.upsert({
+          where: {
+            contestId_nombre: {
+              contestId: id,
+              nombre: categoryName,
+            },
+          },
+          update: {
+            orden: i + 1,
+          },
+          create: {
+            nombre: categoryName,
+            contestId: id,
+            orden: i + 1,
+          },
+        })
+        console.log(`Upserted category: ${categoryName} with order ${i + 1}`)
+      }
+    }
+
+    // Fetch updated contest with categories
+    const finalContest = await prisma.contest.findUnique({
+      where: { id },
       include: {
         company: {
           select: {
@@ -191,10 +263,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             nombre: true,
           },
         },
+        contestCategories: {
+          orderBy: { orden: "asc" },
+          select: {
+            id: true,
+            nombre: true,
+            orden: true,
+          },
+        },
       },
     })
 
-    return NextResponse.json({ contest })
+    return NextResponse.json({ contest: finalContest })
   } catch (error) {
     console.error("Error updating contest:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

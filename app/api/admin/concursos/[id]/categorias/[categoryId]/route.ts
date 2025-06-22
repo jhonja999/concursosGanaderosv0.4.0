@@ -3,15 +3,15 @@ import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     id: string // contestId
     categoryId: string
-  }
+  }>
 }
 
 // GET a single category
 export async function GET(request: NextRequest, context: RouteContext) {
-  const categoryId = context.params.categoryId
+  const { categoryId } = await context.params
   if (!categoryId) {
     return NextResponse.json({ message: "ID de categoría no proporcionado" }, { status: 400 })
   }
@@ -40,8 +40,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 // PUT update a category
 export async function PUT(request: NextRequest, context: RouteContext) {
-  const categoryId = context.params.categoryId
-  const contestId = context.params.id
+  const { categoryId, id: contestId } = await context.params
 
   if (!categoryId || !contestId) {
     return NextResponse.json({ message: "ID de categoría o concurso no proporcionado" }, { status: 400 })
@@ -124,8 +123,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 // DELETE a category
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const categoryId = context.params.categoryId
-  const contestId = context.params.id
+  const { categoryId, id: contestId } = await context.params
 
   if (!categoryId || !contestId) {
     return NextResponse.json({ message: "ID de categoría o concurso no proporcionado" }, { status: 400 })

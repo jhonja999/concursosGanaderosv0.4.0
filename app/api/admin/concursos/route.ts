@@ -236,6 +236,29 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Synchronize ContestCategory records based on the 'categorias' string array
+    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+      console.log("Creating contest categories:", categorias)
+
+      // Create categories in a transaction to ensure consistency
+      await prisma.$transaction(async (tx) => {
+        for (let i = 0; i < categorias.length; i++) {
+          const categoryName = categorias[i]
+          if (typeof categoryName === "string" && categoryName.trim() !== "") {
+            await tx.contestCategory.create({
+              data: {
+                nombre: categoryName.trim(),
+                contestId: contest.id,
+                orden: i + 1,
+              },
+            })
+          }
+        }
+      })
+
+      console.log("Contest categories created successfully")
+    }
+
     console.log("Contest created successfully:", contest.id)
 
     return NextResponse.json({ contest }, { status: 201 })

@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { GanadoList } from "@/components/ganado/ganado-list"
-import { GanadoForm } from "@/components/ganado/ganado-form"
+import { GanadoForm } from "@/components/ganado/ganado-contest-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
 
 interface Ganado {
@@ -108,14 +107,10 @@ export default function GanadoPage() {
   return (
     <div className="container mx-auto py-6">
       {!showForm ? (
-        <GanadoList
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onView={handleView}
-          onDelete={handleDelete}
-        />
+        <GanadoList onAdd={handleAdd} onEdit={handleEdit} onView={handleView} onDelete={handleDelete} />
       ) : (
         <GanadoForm
+          contestId="default" // For dashboard, we'll use a default contest or make it optional
           initialData={editingGanado}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
@@ -134,13 +129,13 @@ export default function GanadoPage() {
               {viewingGanado.imagen_url && (
                 <div className="flex justify-center">
                   <img
-                    src={viewingGanado.imagen_url}
+                    src={viewingGanado.imagen_url || "/placeholder.svg"}
                     alt={viewingGanado.nombre}
                     className="w-48 h-48 object-cover rounded-lg"
                   />
                 </div>
               )}
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <strong>Nombre:</strong> {viewingGanado.nombre}

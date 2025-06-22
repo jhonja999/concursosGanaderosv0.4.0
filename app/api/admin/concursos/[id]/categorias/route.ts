@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt" // Assuming you have a token verification utility
 
 // GET all categories for a contest
-export async function GET(request: NextRequest, context: { params: { id: string } }) {
-  const contestId = context.params.id
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: contestId } = await context.params
   if (!contestId) {
     return NextResponse.json({ message: "ID del concurso no proporcionado" }, { status: 400 })
   }
@@ -31,8 +31,8 @@ export async function GET(request: NextRequest, context: { params: { id: string 
 }
 
 // POST a new category for a contest
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
-  const contestId = context.params.id
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: contestId } = await context.params
   if (!contestId) {
     return NextResponse.json({ message: "ID del concurso no proporcionado" }, { status: 400 })
   }
