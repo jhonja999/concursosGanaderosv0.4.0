@@ -1,31 +1,33 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import type { LucideIcon } from "lucide-react"
+import type React from "react"
+import type { LucideProps } from "lucide-react"
+import { Button } from "@/components/ui/button" // Assuming Button is used internally
 
-interface EmptyStateProps {
-  icon?: LucideIcon
+export interface EmptyStateProps {
+  icon?: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>
   title: string
-  description?: string
+  description: string
   action?: {
     label: string
     onClick: () => void
+    variant?: "link" | "default" | "destructive" | "outline" | "secondary" | "ghost" | null | undefined
+    icon?: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>
   }
-  className?: string
 }
 
-export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ icon: IconComponent, title, description, action }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center text-center py-12", className)}>
-      {Icon && (
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Icon className="w-6 h-6 text-muted-foreground" />
-        </div>
+    <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8 text-center min-h-[300px]">
+      {IconComponent && <IconComponent className="w-16 h-16 mb-4 text-muted-foreground" />}
+      <h2 className="text-xl font-semibold mb-2">{title}</h2>
+      <p className="text-muted-foreground mb-6 max-w-md">{description}</p>
+      {action && (
+        <Button onClick={action.onClick} variant={action.variant || "default"}>
+          {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+          {action.label}
+        </Button>
       )}
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      {description && <p className="text-muted-foreground mb-4 max-w-sm">{description}</p>}
-      {action && <Button onClick={action.onClick}>{action.label}</Button>}
     </div>
   )
 }

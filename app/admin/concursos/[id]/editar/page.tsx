@@ -15,7 +15,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ArrowLeft, Save, Trophy, CalendarIcon, MapPin, DollarSign, Plus, X, Building2 } from "lucide-react"
+// Add CalendarDays to the lucide-react import
+import {
+  ArrowLeft,
+  Save,
+  Trophy,
+  CalendarIcon,
+  MapPin,
+  DollarSign,
+  Plus,
+  X,
+  Building2,
+  CalendarDays,
+} from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -812,6 +824,12 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
                     <Link href={`/admin/concursos/${resolvedParams.id}/auspiciadores`}>
                       <Building2 className="h-4 w-4 mr-2" />
                       Gestionar Auspiciadores
+                    </Link>
+                  </Button>
+                  <Button type="button" variant="outline" asChild className="w-full">
+                    <Link href={`/admin/concursos/${resolvedParams.id}/eventos`}>
+                      <CalendarDays className="h-4 w-4 mr-2" />
+                      Gestionar Agenda
                     </Link>
                   </Button>
                 </div>

@@ -1,14 +1,25 @@
 import { notFound } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, MapPin, Users, DollarSign, Trophy, Building2, Globe, Phone, Mail } from "lucide-react"
+import { Calendar, MapPin, Users, DollarSign, Trophy, Building2, Globe, Phone, Mail, CalendarDays } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
 import { SponsorsSection } from "@/components/shared/sponsors-section"
 
+// Add Event type to the interface
+interface Event {
+  id: string
+  title: string
+  description?: string
+  featuredImage?: string
+  startDate: string
+  endDate?: string
+}
+
+// Add events to the Contest interface
 interface Contest {
   id: string
   nombre: string
@@ -36,6 +47,7 @@ interface Contest {
     imagen: string
     website?: string
   }>
+  events?: Event[]
   company: {
     id: string
     nombre: string
@@ -202,6 +214,42 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 whitespace-pre-line">{contest.reglamento}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Agenda del Concurso */}
+            {contest.events && contest.events.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CalendarDays className="h-6 w-6" />
+                    Agenda del Concurso
+                  </CardTitle>
+                  <CardDescription>Cronograma de actividades y eventos programados.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {contest.events.map((event) => (
+                    <div key={event.id} className="flex flex-col sm:flex-row gap-4 items-start">
+                      {event.featuredImage && (
+                        <img
+                          src={event.featuredImage || "/placeholder.svg"}
+                          alt={event.title}
+                          className="w-full sm:w-48 h-32 object-cover rounded-lg shrink-0"
+                        />
+                      )}
+                      <div className="flex-grow">
+                        <p className="text-sm font-semibold text-primary">
+                          {format(new Date(event.startDate), "eeee, dd 'de' MMMM, HH:mm", { locale: es })}
+                          {event.endDate && ` - ${format(new Date(event.endDate), "HH:mm")}`}
+                        </p>
+                        <h3 className="text-lg font-bold mt-1">{event.title}</h3>
+                        {event.description && (
+                          <p className="text-gray-600 mt-2 text-sm leading-relaxed">{event.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}

@@ -208,9 +208,11 @@ export default function CompaniasPage() {
                           Editar
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Detalles
+                      <DropdownMenuItem asChild>
+                        <Link href={`/admin/companias/${company.id}/editar`}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Detalles
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteCompany(company)}>
