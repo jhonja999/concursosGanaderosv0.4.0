@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Save, Building2 } from "lucide-react"
+import { ArrowLeft, Save, Building2, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 import { toast } from "sonner"
@@ -31,6 +31,13 @@ interface CompanyFormData {
   tipoOrganizacion: string
   isFeatured: boolean
   isPublished: boolean
+}
+
+interface ContestItem {
+  id: string
+  nombre: string
+  status: string
+  fechaInicio: string // Or Date, but string is fine from API
 }
 
 export default function EditarCompaniaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +59,7 @@ export default function EditarCompaniaPage({ params }: { params: Promise<{ id: s
     isFeatured: false,
     isPublished: false,
   })
+  const [companyContests, setCompanyContests] = useState<ContestItem[]>([])
 
   useEffect(() => {
     fetchCompany()
@@ -78,6 +86,7 @@ export default function EditarCompaniaPage({ params }: { params: Promise<{ id: s
           isFeatured: company.isFeatured || false,
           isPublished: company.isPublished || false,
         })
+        setCompanyContests(company.contests || [])
       } else {
         toast.error("Error al cargar la compañía")
         router.push("/admin/companias")
@@ -302,6 +311,53 @@ export default function EditarCompaniaPage({ params }: { params: Promise<{ id: s
                 </div>
               </CardContent>
             </Card>
+            {/* Associated Contests Card */}
+            {companyContests.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Concursos Asociados</CardTitle>
+                  <CardDescription>Lista de concursos organizados por esta compañía.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {companyContests.map((contest) => (
+                      <li
+                        key={contest.id}
+                        className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md gap-2"
+                      >
+                        <div>
+                          <Link
+                            href={`/admin/concursos/${contest.id}/editar`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {contest.nombre}
+                          </Link>
+                          <p className="text-sm text-muted-foreground">
+                            Estado: {contest.status} | Inicio: {new Date(contest.fechaInicio).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/admin/concursos/${contest.id}/editar`}>
+                            Ver Detalles
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+            {!isLoading && companyContests.length === 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Concursos Asociados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">No hay concursos asociados a esta compañía.</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}

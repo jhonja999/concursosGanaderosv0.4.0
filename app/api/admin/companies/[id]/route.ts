@@ -34,6 +34,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             users: true,
           },
         },
+        contests: {
+          // Add this block to include contests
+          select: {
+            id: true,
+            nombre: true,
+            status: true,
+            fechaInicio: true,
+          },
+          orderBy: {
+            fechaInicio: "desc",
+          },
+        },
       },
     })
 

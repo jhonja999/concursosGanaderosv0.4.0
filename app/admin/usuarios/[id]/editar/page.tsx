@@ -141,11 +141,17 @@ export default function EditarUsuarioPage({ params }: { params: Promise<{ id: st
     try {
       const response = await fetch("/api/admin/companies")
       if (response.ok) {
-        const companiesData = await response.json()
-        setCompanies(companiesData)
+        const data = await response.json()
+        // Assuming the API returns { companies: [...] } or just [...]
+        // This handles both cases, preferring data.companies if it exists.
+        setCompanies(Array.isArray(data.companies) ? data.companies : Array.isArray(data) ? data : [])
+      } else {
+        console.error("Failed to fetch companies. Status:", response.status)
+        setCompanies([]) // Set to empty array on failed response
       }
     } catch (error) {
       console.error("Error fetching companies:", error)
+      setCompanies([]) // Set to empty array on catch
     }
   }
 
