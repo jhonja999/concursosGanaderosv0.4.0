@@ -87,6 +87,14 @@ HEMBRA
 MIXTO // Para categorías que aceptan ambos o no especifican
 }
 
+// NUEVA ENUMERACIÓN PARA TIPO DE PUNTAJE
+enum TipoPuntaje {
+NUMERICO             // Puntaje numérico (0-100)
+POSICION             // Posición (1er lugar, 2do lugar, etc.)
+CALIFICACION         // Calificación (A, B, C, etc.)
+PUNTOS               // Sistema de puntos personalizado
+}
+
 // =========================================================================
 // MODELO DE USUARIO (OPTIMIZADO PARA ADMIN DASHBOARD)
 // =========================================================================
@@ -214,6 +222,7 @@ contests  Contest[]
 propietarios Propietario[]
 expositores  Expositor[]
 ganado       Ganado[] // Ganado general de la compañía (inventario)
+establos     Establo[] // Establos de la compañía
 
 
 @@index([slug])
@@ -256,6 +265,13 @@ categorias            String[]      // Array de categorías (for backward compat
 premiacion            Json?         // Estructura de premios en JSON
 reglamento            String?       @db.Text
 auspiciadores         Json?         // Array de auspiciadores: [{ nombre: string, imagen: string, id: string }] // Considerar mover a tabla
+
+// Sistema de puntaje del concurso
+tipoPuntaje           TipoPuntaje   @default(NUMERICO) // Tipo de sistema de puntaje
+puntajeMinimo         Float?        @default(0)        // Puntaje mínimo (para NUMERICO)
+puntajeMaximo         Float?        @default(100)      // Puntaje máximo (para NUMERICO)
+posicionesDisponibles Int?          @default(10)       // Número de posiciones (para POSICION)
+calificacionesCustom  String[]      @default([])       // Calificaciones personalizadas (para CALIFICACION)
 
 // Contacto
 contactoOrganizador   String?
@@ -624,6 +640,36 @@ model Event {
 }
 
 // =========================================================================
+// MODELO DE ESTABLO (NUEVO)
+// =========================================================================
+model Establo {
+  id              String    @id @default(cuid())
+  nombre          String
+  descripcion     String?   @db.Text
+  ubicacion       String?
+  direccion       String?
+  telefono        String?
+  email           String?
+  propietario     String?   // Nombre del propietario del establo
+  capacidad       Int?      // Capacidad de animales
+  tipoGanado      TipoGanado[] // Tipos de ganado que maneja
+  certificaciones String[]  // Certificaciones del establo
+  
+  companyId       String?   // Compañía a la que pertenece el establo
+  company         Company?  @relation(fields: [companyId], references: [id])
+
+  ganado          Ganado[]  @relation("EstabloGanado")
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([nombre])
+  @@unique([companyId, nombre], name: "companyId_nombre")
+  @@map("establos")
+}
+
+// =========================================================================
 // MODELO DE PROPIETARIO (NUEVO)
 // =========================================================================
 model Propietario {
@@ -707,8 +753,10 @@ model Ganado {
   isGanador         Boolean   @default(false) // Si ha ganado algo
   premiosObtenidos  String[]  // Lista de premios ganados
 
-  // Puntuación en el concurso - NUEVO CAMPO
+  // Puntuación en el concurso - MEJORADO
   puntaje           Float?    // Puntaje obtenido en el concurso (0-100)
+  posicion          Int?      // Posición obtenida (1er lugar, 2do lugar, etc.)
+  calificacion      String?   // Calificación obtenida (A, B, C, etc.)
 
   // Relaciones
   companyId         String?   // Compañía dueña del animal (inventario general)
@@ -719,6 +767,10 @@ model Ganado {
   
   expositorId       String?
   expositor         Expositor?   @relation("ExpositorDeGanado", fields: [expositorId], references: [id])
+
+  // NUEVA RELACIÓN CON ESTABLO
+  establoId         String?
+  establo           Establo?     @relation("EstabloGanado", fields: [establoId], references: [id])
 
   // Campos para participación en concurso
   contestId         String?   // Concurso en el que participa
@@ -737,8 +789,10 @@ model Ganado {
   @@index([companyId])
   @@index([propietarioId])
   @@index([expositorId])
+  @@index([establoId])
   @@index([contestId])
   @@index([contestCategoryId])
-  @@index([puntaje]) // Nuevo índice para puntaje
+  @@index([puntaje])
+  @@index([posicion])
   @@map("ganado")
 }

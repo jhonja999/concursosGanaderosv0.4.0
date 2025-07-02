@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, X, AlertTriangle, Crown, Trophy, Star, Clock, Heart, Zap } from "lucide-react"
+import { Loader2, X, AlertTriangle, Crown, Trophy, Star, Clock, Heart, Zap, Building2, Plus } from "lucide-react"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 
 // Tipos de animales y sus razas
@@ -123,6 +123,12 @@ interface GanadoFormData {
   expositorEmpresa?: string
   expositorExperiencia?: string
 
+  // Establo (opcional)
+  establoId?: string
+  nuevoEstabloNombre?: string
+  nuevoEstabloUbicacion?: string
+  nuevoEstabloDescripcion?: string
+
   // Categoría y concurso
   contestCategoryId: string
   numeroFicha: string
@@ -133,8 +139,10 @@ interface GanadoFormData {
   precioBaseRemate?: number
   isDestacado: boolean
 
-  // Puntaje - NUEVO CAMPO
+  // Puntaje - campos mejorados
   puntaje?: number
+  posicion?: number
+  calificacion?: string
 
   // Archivos
   imagenes: string[]
@@ -151,13 +159,17 @@ interface GanadoFormProps {
 
 export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoading = false }: GanadoFormProps) {
   const [categories, setCategories] = useState<any[]>([])
+  const [establos, setEstablos] = useState<any[]>([])
+  const [contest, setContest] = useState<any>(null)
   const [loadingCategories, setLoadingCategories] = useState(true)
-  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | "">("")
+  const [loadingEstablos, setLoadingEstablos] = useState(true)
+  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | "">("bovino")
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [imagenes, setImagenes] = useState<string[]>(initialData?.imagenes || [])
   const [documentos, setDocumentos] = useState<string[]>(initialData?.documentos || [])
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showNewEstablo, setShowNewEstablo] = useState(false)
 
   const {
     register,
@@ -176,12 +188,31 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
       imagenes: [],
       documentos: [],
       puntaje: undefined,
+      posicion: undefined,
+      calificacion: undefined,
       ...initialData,
     },
     mode: "onChange",
   })
 
   const watchedValues = watch()
+
+  // Cargar datos del concurso
+  useEffect(() => {
+    const fetchContest = async () => {
+      try {
+        const response = await fetch(`/api/admin/concursos/${contestId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setContest(data.contest)
+        }
+      } catch (error) {
+        console.error("Error loading contest:", error)
+      }
+    }
+
+    fetchContest()
+  }, [contestId])
 
   // Cargar categorías del concurso
   useEffect(() => {
@@ -200,6 +231,25 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
     }
 
     fetchCategories()
+  }, [contestId])
+
+  // Cargar establos disponibles
+  useEffect(() => {
+    const fetchEstablos = async () => {
+      try {
+        const response = await fetch(`/api/admin/establos?contestId=${contestId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setEstablos(data.establos || [])
+        }
+      } catch (error) {
+        console.error("Error loading establos:", error)
+      } finally {
+        setLoadingEstablos(false)
+      }
+    }
+
+    fetchEstablos()
   }, [contestId])
 
   // Mantener selectedTipoAnimal cuando hay datos iniciales o cuando cambia el valor
@@ -256,24 +306,48 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
       }
     }
 
-    // Validar puntaje si está presente
-    if (watchedValues.puntaje !== undefined && watchedValues.puntaje !== null) {
-      const puntaje = Number(watchedValues.puntaje)
-      if (isNaN(puntaje) || puntaje < 0 || puntaje > 100) {
-        errors.push("El puntaje debe estar entre 0 y 100")
+    // Validar puntaje según el tipo de puntaje del concurso
+    if (contest?.tipoPuntaje) {
+      switch (contest.tipoPuntaje) {
+        case "NUMERICO":
+        case "PUNTOS":
+          if (watchedValues.puntaje !== undefined && watchedValues.puntaje !== null) {
+            const puntaje = Number(watchedValues.puntaje)
+            const min = contest.puntajeMinimo || 0
+            const max = contest.puntajeMaximo || 100
+            if (isNaN(puntaje) || puntaje < min || puntaje > max) {
+              errors.push(`El puntaje debe estar entre ${min} y ${max}`)
+            }
+          }
+          break
+        case "POSICION":
+          if (watchedValues.posicion !== undefined && watchedValues.posicion !== null) {
+            const posicion = Number(watchedValues.posicion)
+            const maxPosiciones = contest.posicionesDisponibles || 10
+            if (isNaN(posicion) || posicion < 1 || posicion > maxPosiciones) {
+              errors.push(`La posición debe estar entre 1 y ${maxPosiciones}`)
+            }
+          }
+          break
       }
     }
 
     setValidationErrors(errors)
     return errors.length === 0
-  }, [watchedValues.tipoAnimal, watchedValues.fechaNacimiento, watchedValues.puntaje])
+  }, [watchedValues.tipoAnimal, watchedValues.fechaNacimiento, watchedValues.puntaje, watchedValues.posicion, contest])
 
   // Validar cuando cambien los valores relevantes
   useEffect(() => {
     if (watchedValues.tipoAnimal && watchedValues.fechaNacimiento) {
       validateAnimal()
     }
-  }, [watchedValues.tipoAnimal, watchedValues.fechaNacimiento, watchedValues.puntaje, validateAnimal])
+  }, [
+    watchedValues.tipoAnimal,
+    watchedValues.fechaNacimiento,
+    watchedValues.puntaje,
+    watchedValues.posicion,
+    validateAnimal,
+  ])
 
   // Prevenir navegación accidental con cambios sin guardar
   useEffect(() => {
@@ -328,11 +402,8 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
     try {
       await onSubmit(formData)
       setHasUnsavedChanges(false) // Reset flag after successful save
-      // Don't reset form or clear images/documents here to prevent form closure
-      //toast.success(initialData ? "Ganado actualizado exitosamente" : "Ganado registrado exitosamente")
     } catch (error) {
       console.error("Error submitting form:", error)
-      //toast.error("Error al guardar. Por favor intenta de nuevo.")
     } finally {
       setIsSubmitting(false)
     }
@@ -404,6 +475,121 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
     }
   }
 
+  const renderScoreFields = () => {
+    if (!contest?.tipoPuntaje) return null
+
+    switch (contest.tipoPuntaje) {
+      case "NUMERICO":
+      case "PUNTOS":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="puntaje">
+              {contest.tipoPuntaje === "NUMERICO" ? "Puntaje" : "Puntos"}
+              {contest.puntajeMinimo !== undefined &&
+                contest.puntajeMaximo !== undefined &&
+                ` (${contest.puntajeMinimo} - ${contest.puntajeMaximo})`}
+            </Label>
+            <Input
+              id="puntaje"
+              type="number"
+              step="0.1"
+              min={contest.puntajeMinimo || 0}
+              max={contest.puntajeMaximo || 100}
+              {...register("puntaje", {
+                valueAsNumber: true,
+                min: {
+                  value: contest.puntajeMinimo || 0,
+                  message: `El puntaje debe ser mayor o igual a ${contest.puntajeMinimo || 0}`,
+                },
+                max: {
+                  value: contest.puntajeMaximo || 100,
+                  message: `El puntaje debe ser menor o igual a ${contest.puntajeMaximo || 100}`,
+                },
+              })}
+              placeholder={`Ej: 85.5 (${contest.puntajeMinimo || 0}-${contest.puntajeMaximo || 100})`}
+            />
+            <p className="text-xs text-muted-foreground">
+              {contest.tipoPuntaje === "NUMERICO" ? "Puntaje obtenido en el concurso" : "Puntos obtenidos"}
+            </p>
+            {errors.puntaje && (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.puntaje.message}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )
+
+      case "POSICION":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="posicion">Posición (1-{contest.posicionesDisponibles || 10})</Label>
+            <Input
+              id="posicion"
+              type="number"
+              min="1"
+              max={contest.posicionesDisponibles || 10}
+              {...register("posicion", {
+                valueAsNumber: true,
+                min: { value: 1, message: "La posición debe ser mayor a 0" },
+                max: {
+                  value: contest.posicionesDisponibles || 10,
+                  message: `La posición debe ser menor o igual a ${contest.posicionesDisponibles || 10}`,
+                },
+              })}
+              placeholder="Ej: 1 (primer lugar)"
+            />
+            <p className="text-xs text-muted-foreground">
+              Posición obtenida en el concurso (1er lugar, 2do lugar, etc.)
+            </p>
+            {errors.posicion && (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.posicion.message}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )
+
+      case "CALIFICACION":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="calificacion">Calificación</Label>
+            <Controller
+              name="calificacion"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value || "A"} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar calificación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contest.calificacionesCustom && contest.calificacionesCustom.length > 0 ? (
+                      contest.calificacionesCustom.map((cal: string) => (
+                        <SelectItem key={cal} value={cal}>
+                          {cal}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        <SelectItem value="A">A - Excelente</SelectItem>
+                        <SelectItem value="B">B - Muy Bueno</SelectItem>
+                        <SelectItem value="C">C - Bueno</SelectItem>
+                        <SelectItem value="D">D - Regular</SelectItem>
+                        <SelectItem value="E">E - Deficiente</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <p className="text-xs text-muted-foreground">Calificación obtenida en el concurso</p>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <form
       onSubmit={(e) => {
@@ -414,9 +600,10 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
       className="space-y-8"
     >
       <Tabs defaultValue="basica" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="basica">Información Básica</TabsTrigger>
           <TabsTrigger value="actores">Propietario/Expositor</TabsTrigger>
+          <TabsTrigger value="establo">Establo</TabsTrigger>
           <TabsTrigger value="categoria">Categoría</TabsTrigger>
           <TabsTrigger value="archivos">Archivos</TabsTrigger>
         </TabsList>
@@ -466,7 +653,7 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                     rules={{ required: "El tipo de animal es requerido" }}
                     render={({ field }) => (
                       <Select
-                        value={field.value || ""}
+                        value={field.value || "bovino"}
                         onValueChange={(value) => {
                           field.onChange(value)
                           setSelectedTipoAnimal(value as keyof typeof TIPOS_ANIMALES)
@@ -529,7 +716,7 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                     control={control}
                     rules={{ required: "El sexo es requerido" }}
                     render={({ field }) => (
-                      <Select value={field.value || ""} onValueChange={field.onChange}>
+                      <Select value={field.value || "MACHO"} onValueChange={field.onChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar sexo" />
                         </SelectTrigger>
@@ -571,28 +758,8 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                   <p className="text-xs text-muted-foreground">Opcional - peso actual del animal</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="puntaje">Puntaje del Concurso</Label>
-                  <Input
-                    id="puntaje"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    {...register("puntaje", {
-                      valueAsNumber: true,
-                      min: { value: 0, message: "El puntaje debe ser mayor o igual a 0" },
-                      max: { value: 100, message: "El puntaje debe ser menor o igual a 100" },
-                    })}
-                    placeholder="Ej: 85.5 (opcional)"
-                  />
-                  <p className="text-xs text-muted-foreground">Opcional - puntaje obtenido en el concurso (0-100)</p>
-                  {errors.puntaje && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{errors.puntaje.message}</AlertDescription>
-                    </Alert>
-                  )}
-                </div>
+                {/* Campos de puntaje dinámicos según el tipo de concurso */}
+                {renderScoreFields()}
               </div>
 
               {/* Validaciones específicas */}
@@ -766,6 +933,101 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Establo */}
+        <TabsContent value="establo" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Establo (Opcional)
+              </CardTitle>
+              <CardDescription>Seleccione el establo donde se encuentra el animal</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!showNewEstablo ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="establoId">Establo Existente</Label>
+                    <Controller
+                      name="establoId"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value || ""} onValueChange={field.onChange} disabled={loadingEstablos}>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={loadingEstablos ? "Cargando establos..." : "Seleccionar establo"}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sin establo</SelectItem>
+                            {establos.map((establo) => (
+                              <SelectItem key={establo.id} value={establo.id}>
+                                {establo.nombre}
+                                {establo.ubicacion && (
+                                  <span className="text-sm text-gray-500 block">{establo.ubicacion}</span>
+                                )}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowNewEstablo(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Crear Nuevo Establo
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-medium">Nuevo Establo</h4>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewEstablo(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nuevoEstabloNombre">Nombre del Establo *</Label>
+                      <Input
+                        id="nuevoEstabloNombre"
+                        {...register("nuevoEstabloNombre")}
+                        placeholder="Nombre del establo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nuevoEstabloUbicacion">Ubicación</Label>
+                      <Input
+                        id="nuevoEstabloUbicacion"
+                        {...register("nuevoEstabloUbicacion")}
+                        placeholder="Ciudad, Departamento"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="nuevoEstabloDescripcion">Descripción</Label>
+                      <Textarea
+                        id="nuevoEstabloDescripcion"
+                        {...register("nuevoEstabloDescripcion")}
+                        placeholder="Descripción del establo..."
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
