@@ -5,7 +5,20 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Crown, Trophy, Star, Clock, Zap, Eye, MessageCircle, Calendar, Weight, Award } from "lucide-react"
+import {
+  Crown,
+  Trophy,
+  Star,
+  Clock,
+  Zap,
+  Eye,
+  MessageCircle,
+  Calendar,
+  Weight,
+  Award,
+  Building2,
+  MapPin,
+} from "lucide-react"
 
 interface GanadoCardProps {
   ganado: {
@@ -22,6 +35,8 @@ interface GanadoCardProps {
     isGanador: boolean
     premiosObtenidos: string[]
     puntaje?: number
+    posicion?: number
+    calificacion?: string
     numeroFicha?: string
     propietario: {
       nombreCompleto: string
@@ -32,11 +47,16 @@ interface GanadoCardProps {
       nombreCompleto: string
       empresa?: string
     }
+    establo?: {
+      nombre: string
+      ubicacion?: string
+    }
     contestCategory: {
       nombre: string
     }
     contest: {
       nombre: string
+      tipoPuntaje?: "NUMERICO" | "POSICION" | "CALIFICACION" | "PUNTOS"
     }
     createdAt?: Date
   }
@@ -149,7 +169,35 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
     }).format(price)
   }
 
+  const getScoreDisplay = () => {
+    const tipoPuntaje = ganado.contest.tipoPuntaje || "NUMERICO"
+
+    switch (tipoPuntaje) {
+      case "POSICION":
+        if (ganado.posicion) {
+          const suffix =
+            ganado.posicion === 1 ? "er" : ganado.posicion === 2 ? "do" : ganado.posicion === 3 ? "er" : "to"
+          return `${ganado.posicion}${suffix} lugar`
+        }
+        break
+      case "CALIFICACION":
+        if (ganado.calificacion) {
+          return ganado.calificacion
+        }
+        break
+      case "NUMERICO":
+      case "PUNTOS":
+      default:
+        if (ganado.puntaje) {
+          return ganado.puntaje.toFixed(1)
+        }
+        break
+    }
+    return null
+  }
+
   const badges = getBadges()
+  const scoreDisplay = getScoreDisplay()
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
@@ -199,12 +247,12 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
             </div>
           )}
 
-          {/* Puntaje */}
-          {ganado.puntaje && (
+          {/* Puntaje/Posición/Calificación */}
+          {scoreDisplay && (
             <div className="absolute bottom-3 left-3">
               <Badge variant="default" className="bg-blue-600 text-white flex items-center gap-1">
                 <Award className="h-3 w-3" />
-                {ganado.puntaje.toFixed(1)}
+                {scoreDisplay}
               </Badge>
             </div>
           )}
@@ -240,6 +288,24 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
             <span className="text-gray-600">{ganado.pesoKg} kg</span>
           </div>
         </div>
+
+        {/* Información del establo */}
+        {ganado.establo && (
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-blue-800 truncate">{ganado.establo.nombre}</p>
+                {ganado.establo.ubicacion && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <MapPin className="h-3 w-3 text-blue-500" />
+                    <p className="text-xs text-blue-600 truncate">{ganado.establo.ubicacion}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Precio si está en remate */}
         {ganado.enRemate && ganado.precioBaseRemate && (
@@ -293,7 +359,12 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
 
       {/* Footer con acciones */}
       <CardFooter className="p-4 pt-0 flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => onViewDetails?.(ganado.id)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 bg-transparent"
+          onClick={() => onViewDetails?.(ganado.id)}
+        >
           <Eye className="h-4 w-4 mr-2" />
           Ver Detalles
         </Button>
