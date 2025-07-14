@@ -6,9 +6,9 @@ module.exports = {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
-    "./*.{js,ts,jsx,tsx,mdx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -18,6 +18,22 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        baloo: ["Baloo Tamma 2", "Baloo Tamma", "cursive", "system-ui"],
+        nunito: [
+          "Nunito",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+        heading: ["Baloo Tamma 2", "cursive"],
+        body: ["Nunito", "sans-serif"],
+        sans: ["Nunito", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -62,16 +78,23 @@ module.exports = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        emerald: {
+          50: "#ecfdf5",
+          100: "#d1fae5",
+          200: "#a7f3d0",
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+          700: "#047857",
+          800: "#065f46",
+          900: "#064e3b",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      fontFamily: {
-        sans: ["var(--font-sans)", "sans-serif"],
-        baloo: ["Baloo Tamma 2", "sans-serif"],
-        nunito: ["Nunito", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
@@ -86,43 +109,34 @@ module.exports = {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
-        fadeOut: {
-          from: { opacity: "1" },
-          to: { opacity: "0" },
-        },
         slideUp: {
-          from: {
-            opacity: "0",
-            transform: "translateY(20px)",
-          },
-          to: {
-            opacity: "1",
-            transform: "translateY(0)",
-          },
+          from: { opacity: "0", transform: "translateY(20px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
         slideInRight: {
-          from: {
-            opacity: "0",
-            transform: "translateX(50px)",
-          },
-          to: {
-            opacity: "1",
-            transform: "translateX(0)",
-          },
+          from: { opacity: "0", transform: "translateX(50px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
         },
-        pulse: {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.6" },
+        fadeScaleEnter: {
+          from: { opacity: "0", transform: "scale(1.1)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        fadeScaleExit: {
+          from: { opacity: "1", transform: "scale(1)" },
+          to: { opacity: "0", transform: "scale(0.95)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fadeIn 1.5s ease-out forwards",
-        "fade-out": "fadeOut 0.5s ease-out forwards",
         "slide-up": "slideUp 0.8s ease-out forwards",
         "slide-in-right": "slideInRight 0.8s ease-out forwards",
-        pulse: "pulse 2s infinite",
+        "fade-scale-enter": "fadeScaleEnter 0.8s ease-out forwards",
+        "fade-scale-exit": "fadeScaleExit 0.4s ease-out forwards",
+      },
+      screens: {
+        xs: "475px",
       },
     },
   },
