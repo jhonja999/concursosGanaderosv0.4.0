@@ -292,16 +292,16 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
 
       switch (watchedValues.tipoAnimal) {
         case "bovino":
-          if (edadMeses < 10) errors.push("Los bovinos deben tener mínimo 10 meses de edad")
+          if (edadMeses < 1) errors.push("Los bovinos deben tener mínimo 1 meses de edad")
           break
         case "ovino":
-          if (edadMeses < 6) errors.push("Los ovinos deben tener mínimo 6 meses de edad")
+          if (edadMeses < 1) errors.push("Los ovinos deben tener mínimo 1 meses de edad")
           break
         case "equino":
-          if (edadMeses < 12) errors.push("Los equinos deben tener mínimo 12 meses de edad")
+          if (edadMeses < 1) errors.push("Los equinos deben tener mínimo 1 meses de edad")
           break
         case "cuy":
-          if (edadMeses < 3 || edadMeses > 8) errors.push("Los cuyes deben tener entre 3 y 8 meses de edad")
+          if (edadMeses < 1 || edadMeses > 8) errors.push("Los cuyes deben tener entre 1 meses de edad")
           break
       }
     }
