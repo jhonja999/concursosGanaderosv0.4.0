@@ -591,7 +591,7 @@ format      String   // Formato del archivo (jpg, png, etc.)
 resourceType String  @default("image") // image, video, raw, auto
 bytes       Int      // Tamaño en bytes
 width       Int?     // Ancho (para imágenes)
-height      Int?     // Alto (para imágenes)
+height       Int?     // Alto (para imágenes)
 
 // Información de contexto
 entityType  String?  // Tipo de entidad asociada
@@ -729,7 +729,7 @@ model Ganado {
   id                String    @id @default(cuid())
   nombre            String
   // slug              String?   @unique // Slug puede ser opcional o generado
-  numeroFicha       String?   // Número de registro/ficha para el concurso, podría ser único por concurso
+  numeroFicha       String    // Número de registro/ficha para el concurso, debe ser único por concurso
   
   // Características
   raza              String?
@@ -773,8 +773,8 @@ model Ganado {
   establo           Establo?     @relation("EstabloGanado", fields: [establoId], references: [id])
 
   // Campos para participación en concurso
-  contestId         String?   // Concurso en el que participa
-  contest           Contest?  @relation("ContestParticipants", fields: [contestId], references: [id])
+  contestId         String    // Concurso en el que participa
+  contest           Contest   @relation("ContestParticipants", fields: [contestId], references: [id], onDelete: Cascade)
   
   contestCategoryId String?   // Categoría del concurso en la que participa
   contestCategory   ContestCategory? @relation("GanadoInCategory", fields: [contestCategoryId], references: [id])

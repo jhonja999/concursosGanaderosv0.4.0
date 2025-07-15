@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Eye, Download, ArrowLeft } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { toast } from "sonner"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
 
 interface Ganado {
   id: string
@@ -59,6 +60,10 @@ interface Ganado {
     empresa?: string
     experiencia?: string
   }
+  establo?: {
+    id: string
+    nombre: string
+  } | null
   contestCategory: {
     id: string
     nombre: string
@@ -77,6 +82,16 @@ interface Ganado {
   createdAt: string
 }
 
+interface ContestCategory {
+  id: string
+  nombre: string
+}
+
+interface Establo {
+  id: string
+  nombre: string
+}
+
 export default function ParticipantesPage() {
   const params = useParams()
   const router = useRouter()
@@ -88,6 +103,7 @@ export default function ParticipantesPage() {
   const [categoriaFilter, setCategoriaFilter] = useState("all")
   const [razaFilter, setRazaFilter] = useState("all")
   const [sexoFilter, setSexoFilter] = useState("all")
+  const [establoFilter, setEstabloFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -95,7 +111,12 @@ export default function ParticipantesPage() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [contest, setContest] = useState<any>(null)
 
-  const fetchGanado = async () => {
+  // Data for filters
+  const [categorias, setCategorias] = useState<ContestCategory[]>([])
+  const [razas, setRazas] = useState<string[]>([])
+  const [establos, setEstablos] = useState<Establo[]>([])
+
+  const fetchGanado = useCallback(async () => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams({
@@ -104,15 +125,18 @@ export default function ParticipantesPage() {
       })
 
       if (search) params.append("search", search)
-      if (categoriaFilter && categoriaFilter !== "all") params.append("categoria", categoriaFilter)
+      if (categoriaFilter && categoriaFilter !== "all") params.append("categoriaId", categoriaFilter)
       if (razaFilter && razaFilter !== "all") params.append("raza", razaFilter)
       if (sexoFilter && sexoFilter !== "all") params.append("sexo", sexoFilter)
+      if (establoFilter && establoFilter !== "all") params.append("establoId", establoFilter)
 
       const response = await fetch(`/api/admin/concursos/${contestId}/ganado?${params}`)
       if (response.ok) {
         const data = await response.json()
         setGanado(data.ganado)
         setTotalPages(data.pagination.pages)
+      } else {
+        toast.error("Error al cargar los participantes")
       }
     } catch (error) {
       console.error("Error fetching ganado:", error)
@@ -120,24 +144,54 @@ export default function ParticipantesPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [contestId, currentPage, search, categoriaFilter, razaFilter, sexoFilter, establoFilter])
 
-  const fetchContest = async () => {
+  const fetchFilterData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/admin/concursos/${contestId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setContest(data)
+      // Fetch categories
+      const catRes = await fetch(`/api/admin/concursos/${contestId}/categorias`)
+      if (catRes.ok) setCategorias(await catRes.json())
+
+      // Fetch distinct razas
+      const razaRes = await fetch(`/api/admin/concursos/${contestId}/ganado/distinct-values`)
+      if (razaRes.ok) {
+        const data = await razaRes.json()
+        setRazas(data.razas || [])
+      }
+
+      // Fetch establos
+      const establoRes = await fetch(`/api/admin/establos?contestId=${contestId}`)
+      if (establoRes.ok) {
+        const data = await establoRes.json()
+        // Handle both possible response formats
+        setEstablos(Array.isArray(data) ? data : data.establos || [])
       }
     } catch (error) {
-      console.error("Error fetching contest:", error)
+      console.error("Error fetching filter data:", error)
+      toast.error("Error al cargar los filtros")
     }
-  }
+  }, [contestId])
 
   useEffect(() => {
-    fetchGanado()
-    fetchContest()
-  }, [currentPage, search, categoriaFilter, razaFilter, sexoFilter, contestId])
+    if (contestId) {
+      fetchGanado()
+    }
+  }, [fetchGanado, contestId])
+
+  useEffect(() => {
+    if (contestId) {
+      const fetchContest = async () => {
+        try {
+          const response = await fetch(`/api/admin/concursos/${contestId}`)
+          if (response.ok) setContest(await response.json())
+        } catch (error) {
+          console.error("Error fetching contest:", error)
+        }
+      }
+      fetchContest()
+      fetchFilterData()
+    }
+  }, [contestId, fetchFilterData])
 
   const handleSearch = (value: string) => {
     setSearch(value)
@@ -149,6 +203,7 @@ export default function ParticipantesPage() {
     setCategoriaFilter("all")
     setRazaFilter("all")
     setSexoFilter("all")
+    setEstabloFilter("all")
     setCurrentPage(1)
   }
 
@@ -186,13 +241,10 @@ export default function ParticipantesPage() {
   }
 
   const exportData = () => {
-    // Implementar exportación a CSV/Excel
     toast.info("Función de exportación en desarrollo")
   }
 
-  const getSexoLabel = (sexo: string) => {
-    return sexo === "MACHO" ? "Macho" : "Hembra"
-  }
+  const getSexoLabel = (sexo: string) => (sexo === "MACHO" ? "Macho" : "Hembra")
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -204,7 +256,6 @@ export default function ParticipantesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => router.back()}>
@@ -213,9 +264,7 @@ export default function ParticipantesPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Participantes</h1>
-            <p className="text-muted-foreground">
-              {contest?.nombre} - {ganado.length} animales registrados
-            </p>
+            <p className="text-muted-foreground">{contest?.nombre}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -230,17 +279,16 @@ export default function ParticipantesPage() {
         </div>
       </div>
 
-      {/* Filtros */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Filtros de Búsqueda</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="relative md:col-span-3 lg:col-span-2">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, propietario..."
+                placeholder="Buscar por nombre, ficha, propietario..."
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10"
@@ -253,7 +301,11 @@ export default function ParticipantesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las categorías</SelectItem>
-                {/* Agregar categorías dinámicamente */}
+                {categorias.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -263,37 +315,56 @@ export default function ParticipantesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las razas</SelectItem>
-                {/* Agregar razas dinámicamente */}
+                {razas.map((raza) => (
+                  <SelectItem key={raza} value={raza}>
+                    {raza}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <Select value={sexoFilter} onValueChange={setSexoFilter}>
+            <Select value={establoFilter} onValueChange={setEstabloFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Sexo" />
+                <SelectValue placeholder="Establo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="MACHO">Macho</SelectItem>
-                <SelectItem value="HEMBRA">Hembra</SelectItem>
+                <SelectItem value="all">Todos los establos</SelectItem>
+                {establos.map((establo) => (
+                  <SelectItem key={establo.id} value={establo.id}>
+                    {establo.nombre}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <Button variant="outline" onClick={clearFilters}>
-              Limpiar Filtros
-            </Button>
+            <div className="flex gap-2">
+              <Select value={sexoFilter} onValueChange={setSexoFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sexo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="MACHO">Macho</SelectItem>
+                  <SelectItem value="HEMBRA">Hembra</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={clearFilters} className="w-full bg-transparent">
+                Limpiar
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabla */}
       <Card>
         <CardHeader>
           <CardTitle>Animales Registrados</CardTitle>
+          <CardDescription>{ganado.length} animales encontrados</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <LoadingSpinner />
             </div>
           ) : (
             <Table>
@@ -302,8 +373,8 @@ export default function ParticipantesPage() {
                   <TableHead>Animal</TableHead>
                   <TableHead>Ficha</TableHead>
                   <TableHead>Categoría</TableHead>
-                  <TableHead>Raza</TableHead>
                   <TableHead>Propietario</TableHead>
+                  <TableHead>Establo</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Registrado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -321,8 +392,7 @@ export default function ParticipantesPage() {
                         <div>
                           <div className="font-medium">{animal.nombre}</div>
                           <div className="text-sm text-muted-foreground">
-                            {getSexoLabel(animal.sexo)}
-                            {animal.pesoKg && ` • ${animal.pesoKg} kg`}
+                            {animal.raza} • {getSexoLabel(animal.sexo)}
                           </div>
                         </div>
                       </div>
@@ -333,8 +403,8 @@ export default function ParticipantesPage() {
                     <TableCell>
                       <Badge variant="secondary">{animal.contestCategory.nombre}</Badge>
                     </TableCell>
-                    <TableCell>{animal.raza}</TableCell>
                     <TableCell>{animal.propietario.nombreCompleto}</TableCell>
+                    <TableCell>{animal.establo?.nombre || "N/A"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {animal.enRemate && <Badge variant="destructive">En Remate</Badge>}
@@ -384,13 +454,12 @@ export default function ParticipantesPage() {
             </Table>
           )}
 
-          {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 Anterior
@@ -401,7 +470,7 @@ export default function ParticipantesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
                 Siguiente
@@ -411,7 +480,6 @@ export default function ParticipantesPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmación de eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -430,38 +498,27 @@ export default function ParticipantesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog de detalles */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalles del Animal</DialogTitle>
             <DialogDescription>Información completa del animal registrado</DialogDescription>
           </DialogHeader>
-
           {selectedGanado && (
-            <div className="space-y-6">
-              {/* Imagen y datos básicos */}
+            <div className="space-y-6 p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1">
-                  {selectedGanado.imagenUrl ? (
-                    <img
-                      src={selectedGanado.imagenUrl || "/placeholder.svg"}
-                      alt={selectedGanado.nombre}
-                      className="w-full h-64 object-cover rounded-lg border"
-                    />
-                  ) : (
-                    <div className="w-full h-64 bg-gray-100 rounded-lg border flex items-center justify-center">
-                      <span className="text-gray-400">Sin imagen</span>
-                    </div>
-                  )}
+                  <img
+                    src={selectedGanado.imagenUrl || "/placeholder.svg"}
+                    alt={selectedGanado.nombre}
+                    className="w-full h-64 object-cover rounded-lg border"
+                  />
                 </div>
-
                 <div className="md:col-span-2 space-y-4">
                   <div>
                     <h3 className="text-2xl font-bold">{selectedGanado.nombre}</h3>
                     <p className="text-muted-foreground">Ficha #{selectedGanado.numeroFicha}</p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Raza</label>
@@ -477,18 +534,19 @@ export default function ParticipantesPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Peso</label>
-                      <p>{selectedGanado.pesoKg ? `${selectedGanado.pesoKg} kg` : "No especificado"}</p>
+                      <p>{selectedGanado.pesoKg ? `${selectedGanado.pesoKg} kg` : "N/A"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Establo</label>
+                      <p>{selectedGanado.establo?.nombre || "N/A"}</p>
                     </div>
                   </div>
-
                   <div className="flex gap-2">
                     {selectedGanado.enRemate && <Badge variant="destructive">En Remate</Badge>}
                     {selectedGanado.isDestacado && <Badge variant="default">Destacado</Badge>}
                   </div>
                 </div>
               </div>
-
-              {/* Información del propietario */}
               <div>
                 <h4 className="text-lg font-semibold mb-3">Propietario</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
@@ -498,26 +556,18 @@ export default function ParticipantesPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Documento</label>
-                    <p>{selectedGanado.propietario.documentoLegal || "No especificado"}</p>
+                    <p>{selectedGanado.propietario.documentoLegal || "N/A"}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Teléfono</label>
-                    <p>{selectedGanado.propietario.telefono || "No especificado"}</p>
+                    <p>{selectedGanado.propietario.telefono || "N/A"}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Email</label>
-                    <p>{selectedGanado.propietario.email || "No especificado"}</p>
+                    <p>{selectedGanado.propietario.email || "N/A"}</p>
                   </div>
-                  {selectedGanado.propietario.direccion && (
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-muted-foreground">Dirección</label>
-                      <p>{selectedGanado.propietario.direccion}</p>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Información del expositor */}
               {selectedGanado.expositor && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Expositor</h4>
@@ -528,69 +578,30 @@ export default function ParticipantesPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Documento</label>
-                      <p>{selectedGanado.expositor.documentoIdentidad || "No especificado"}</p>
+                      <p>{selectedGanado.expositor.documentoIdentidad || "N/A"}</p>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Teléfono</label>
-                      <p>{selectedGanado.expositor.telefono || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Email</label>
-                      <p>{selectedGanado.expositor.email || "No especificado"}</p>
-                    </div>
-                    {selectedGanado.expositor.empresa && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Empresa</label>
-                        <p>{selectedGanado.expositor.empresa}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
-
-              {/* Genealogía */}
               {(selectedGanado.padre || selectedGanado.madre || selectedGanado.lineaGenetica) && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Genealogía</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Padre</label>
-                      <p>{selectedGanado.padre || "No especificado"}</p>
+                      <p>{selectedGanado.padre || "N/A"}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Madre</label>
-                      <p>{selectedGanado.madre || "No especificado"}</p>
+                      <p>{selectedGanado.madre || "N/A"}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Línea Genética</label>
-                      <p>{selectedGanado.lineaGenetica || "No especificado"}</p>
+                      <p>{selectedGanado.lineaGenetica || "N/A"}</p>
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Información adicional */}
-              {(selectedGanado.descripcion || selectedGanado.marcasDistintivas) && (
-                <div>
-                  <h4 className="text-lg font-semibold mb-3">Información Adicional</h4>
-                  <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                    {selectedGanado.descripcion && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Descripción</label>
-                        <p>{selectedGanado.descripcion}</p>
-                      </div>
-                    )}
-                    {selectedGanado.marcasDistintivas && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Marcas Distintivas</label>
-                        <p>{selectedGanado.marcasDistintivas}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Información de remate */}
               {selectedGanado.enRemate && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Información de Remate</h4>

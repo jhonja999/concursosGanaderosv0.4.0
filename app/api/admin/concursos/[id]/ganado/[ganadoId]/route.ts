@@ -26,6 +26,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       include: {
         propietario: true,
         expositor: true,
+        establo: true,
         contestCategory: true,
         contest: {
           select: { nombre: true },
@@ -68,7 +69,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
     const data = await request.json()
 
-    // Verificar que el ganado existe
     const existingGanado = await prisma.ganado.findFirst({
       where: {
         id: ganadoId,
@@ -85,12 +85,10 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Concurso no encontrado" }, { status: 404 })
     }
 
-    // Verificar permisos
     if (!payload.roles?.includes("SUPERADMIN") && existingGanado.contest.companyId !== (payload as any).companyId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
-    // Verificar número de ficha único (si se está cambiando)
     if (data.numeroFicha && data.numeroFicha !== existingGanado.numeroFicha) {
       const duplicateGanado = await prisma.ganado.findFirst({
         where: {
@@ -108,7 +106,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       }
     }
 
-    // Actualizar propietario si se proporciona
     let propietarioId = existingGanado.propietarioId
     if (data.propietarioNombre) {
       const propietario = await prisma.propietario.upsert({
@@ -136,7 +133,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       propietarioId = propietario.id
     }
 
-    // Actualizar expositor si se proporciona
     let expositorId = existingGanado.expositorId
     if (data.expositorNombre && data.expositorNombre.trim() !== "") {
       const expositor = await prisma.expositor.upsert({
@@ -168,7 +164,19 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       expositorId = null
     }
 
-    // Preparar datos de actualización
+    let establoId = data.establoId !== undefined ? data.establoId : existingGanado.establoId
+    if (data.nuevoEstabloNombre && data.nuevoEstabloNombre.trim() !== "") {
+      const newEstablo = await prisma.establo.create({
+        data: {
+          nombre: data.nuevoEstabloNombre,
+          ubicacion: data.nuevoEstabloUbicacion || null,
+          descripcion: data.nuevoEstabloDescripcion || null,
+          companyId: existingGanado.contest.companyId,
+        },
+      })
+      establoId = newEstablo.id
+    }
+
     const updateData: any = {
       nombre: data.nombre || existingGanado.nombre,
       numeroFicha: data.numeroFicha || existingGanado.numeroFicha,
@@ -191,44 +199,34 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       imagenUrl: data.imagenes?.[0] !== undefined ? data.imagenes[0] : existingGanado.imagenUrl,
       propietarioId,
       expositorId,
+      establoId,
     }
 
-    // Actualizar campos opcionales
     if (data.fechaNacimiento !== undefined) {
       updateData.fechaNacimiento = data.fechaNacimiento ? new Date(data.fechaNacimiento) : null
     }
-
     if (data.peso !== undefined) {
       updateData.pesoKg = data.peso && !isNaN(Number.parseFloat(data.peso)) ? Number.parseFloat(data.peso) : null
     }
-
-    // Actualizar puntaje si está presente
     if (data.puntaje !== undefined) {
       updateData.puntaje =
         data.puntaje && !isNaN(Number.parseFloat(data.puntaje)) ? Number.parseFloat(data.puntaje) : null
     }
-
     if (data.contestCategoryId) {
       updateData.contestCategoryId = data.contestCategoryId
     }
 
-    // Actualizar el ganado
     const updatedGanado = await prisma.ganado.update({
       where: { id: ganadoId },
       data: updateData,
       include: {
         propietario: true,
         expositor: true,
+        establo: true,
         contestCategory: true,
-        contest: {
-          select: { nombre: true },
-        },
-        company: {
-          select: { nombre: true },
-        },
-        createdBy: {
-          select: { nombre: true, apellido: true },
-        },
+        contest: { select: { nombre: true } },
+        company: { select: { nombre: true } },
+        createdBy: { select: { nombre: true, apellido: true } },
       },
     })
 
@@ -255,7 +253,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
 
-    // Verificar que el ganado existe
     const existingGanado = await prisma.ganado.findFirst({
       where: {
         id: ganadoId,
@@ -272,17 +269,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       return NextResponse.json({ error: "Concurso no encontrado" }, { status: 404 })
     }
 
-    // Verificar permisos
     if (!payload.roles?.includes("SUPERADMIN") && existingGanado.contest.companyId !== (payload as any).companyId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
-    // Eliminar el ganado
     await prisma.ganado.delete({
       where: { id: ganadoId },
     })
 
-    // Actualizar contador de participantes del concurso
     await prisma.contest.update({
       where: { id: contestId },
       data: {

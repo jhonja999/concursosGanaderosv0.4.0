@@ -72,6 +72,7 @@ export default function EditGanadoPage({ params }: EditGanadoPageProps) {
           expositorEmail: data.expositor?.email || "",
           expositorEmpresa: data.expositor?.empresa || "",
           expositorExperiencia: data.expositor?.experiencia || "",
+          establoId: data.establoId || "",
           contestCategoryId: data.contestCategoryId,
           numeroFicha: data.numeroFicha,
           estado: data.estado || "borrador",

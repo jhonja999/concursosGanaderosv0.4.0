@@ -20,11 +20,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search")
-    const categoria = searchParams.get("categoria")
+    const categoriaId = searchParams.get("categoriaId")
     const raza = searchParams.get("raza")
     const sexo = searchParams.get("sexo")
-    const estado = searchParams.get("estado")
-    const enRemate = searchParams.get("enRemate")
+    const establoId = searchParams.get("establoId")
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "20")
     const skip = (page - 1) * limit
@@ -37,17 +36,18 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (search) {
       where.OR = [
         { nombre: { contains: search, mode: "insensitive" } },
+        { numeroFicha: { contains: search, mode: "insensitive" } },
         { raza: { contains: search, mode: "insensitive" } },
         { propietario: { nombreCompleto: { contains: search, mode: "insensitive" } } },
         { expositor: { nombreCompleto: { contains: search, mode: "insensitive" } } },
+        { establo: { nombre: { contains: search, mode: "insensitive" } } },
       ]
     }
 
-    if (categoria) where.contestCategory = { nombre: categoria }
+    if (categoriaId) where.contestCategoryId = categoriaId
     if (raza) where.raza = raza
     if (sexo) where.sexo = sexo
-    if (estado) where.estado = estado
-    if (enRemate !== null) where.enRemate = enRemate === "true"
+    if (establoId) where.establoId = establoId
 
     const [ganado, total] = await Promise.all([
       prisma.ganado.findMany({
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         include: {
           propietario: true,
           expositor: true,
+          establo: true,
           contestCategory: true,
           contest: {
             select: { nombre: true },
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
             select: { nombre: true, apellido: true },
           },
         },
-        orderBy: [{ puntaje: "desc" }, { createdAt: "desc" }], // Ordenar por puntaje primero
+        orderBy: [{ createdAt: "desc" }],
         skip,
         take: limit,
       }),
@@ -105,9 +106,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const data = await request.json()
-    console.log("Received data in API:", data)
 
-    // Validar campos requeridos (solo los que realmente son obligatorios)
     const requiredFields = [
       { field: "nombre", message: "El nombre del animal es requerido" },
       { field: "tipoAnimal", message: "El tipo de animal es requerido" },
@@ -118,15 +117,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       { field: "numeroFicha", message: "El número de ficha es requerido" },
     ]
 
-    const missingFields = requiredFields.filter(({ field }) => !data[field] || data[field].trim() === "")
+    const missingFields = requiredFields.filter(
+      ({ field }) => !data[field] || (typeof data[field] === "string" && data[field].trim() === ""),
+    )
 
     if (missingFields.length > 0) {
       const errorMessage = missingFields.map(({ message }) => message).join(", ")
-      console.log("Missing fields:", missingFields)
       return NextResponse.json({ error: errorMessage }, { status: 400 })
     }
 
-    // Verificar que el concurso existe y permisos
     const contest = await prisma.contest.findUnique({
       where: { id: contestId },
       include: { company: true },
@@ -140,7 +139,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
-    // Verificar que la categoría existe
     const category = await prisma.contestCategory.findUnique({
       where: { id: data.contestCategoryId },
     })
@@ -149,7 +147,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 })
     }
 
-    // Verificar que el número de ficha no esté duplicado en este concurso
     const existingGanado = await prisma.ganado.findFirst({
       where: {
         contestId: contestId,
@@ -164,7 +161,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       )
     }
 
-    // Crear o encontrar propietario
     const propietario = await prisma.propietario.upsert({
       where: {
         companyId_nombreCompleto: {
@@ -188,7 +184,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       },
     })
 
-    // Crear expositor si se proporciona
     let expositor = null
     if (data.expositorNombre && data.expositorNombre.trim() !== "") {
       expositor = await prisma.expositor.upsert({
@@ -217,7 +212,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       })
     }
 
-    // Preparar datos para crear el ganado
+    let establoId = data.establoId || null
+    if (data.nuevoEstabloNombre && data.nuevoEstabloNombre.trim() !== "") {
+      const newEstablo = await prisma.establo.create({
+        data: {
+          nombre: data.nuevoEstabloNombre,
+          ubicacion: data.nuevoEstabloUbicacion || null,
+          descripcion: data.nuevoEstabloDescripcion || null,
+          companyId: contest.companyId,
+        },
+      })
+      establoId = newEstablo.id
+    }
+
     const ganadoData: any = {
       nombre: data.nombre,
       numeroFicha: data.numeroFicha,
@@ -231,73 +238,85 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       enRemate: data.enRemate || false,
       precioBaseRemate: data.precioBaseRemate ? Number.parseFloat(data.precioBaseRemate) : null,
       isDestacado: data.isDestacado || false,
-      imagenUrl: data.imagenes?.[0] || null, // Primera imagen como principal
+      imagenUrl: data.imagenes?.[0] || null,
       contestId: contestId,
       contestCategoryId: data.contestCategoryId,
       propietarioId: propietario.id,
       expositorId: expositor?.id || null,
       companyId: contest.companyId,
       createdById: (payload as any).userId,
+      establoId: establoId,
     }
 
-    // Agregar campos opcionales solo si están presentes
     if (data.fechaNacimiento) {
       ganadoData.fechaNacimiento = new Date(data.fechaNacimiento)
     }
-
     if (data.peso && !isNaN(Number.parseFloat(data.peso))) {
       ganadoData.pesoKg = Number.parseFloat(data.peso)
     }
-
-    // Agregar puntaje si está presente
     if (data.puntaje !== undefined && data.puntaje !== null && !isNaN(Number.parseFloat(data.puntaje))) {
       ganadoData.puntaje = Number.parseFloat(data.puntaje)
     }
 
-    console.log("Creating ganado with data:", ganadoData)
-
-    // Crear el ganado
     const ganado = await prisma.ganado.create({
       data: ganadoData,
       include: {
         propietario: true,
         expositor: true,
+        establo: true,
         contestCategory: true,
-        contest: {
-          select: { nombre: true },
-        },
-        company: {
-          select: { nombre: true },
-        },
-        createdBy: {
-          select: { nombre: true, apellido: true },
-        },
+        contest: { select: { nombre: true } },
+        company: { select: { nombre: true } },
+        createdBy: { select: { nombre: true, apellido: true } },
       },
     })
 
-    // Actualizar contador de participantes del concurso
     await prisma.contest.update({
       where: { id: contestId },
-      data: {
-        participantCount: {
-          increment: 1,
-        },
-      },
+      data: { participantCount: { increment: 1 } },
     })
 
-    console.log("Ganado created successfully:", ganado.id)
     return NextResponse.json(ganado, { status: 201 })
   } catch (error: any) {
     console.error("Error creating ganado:", error)
-
-    // Manejar errores específicos de Prisma
     if (error?.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un animal con este número de ficha en el concurso" },
         { status: 400 },
       )
     }
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
 
+// Add this new endpoint for distinct values
+export async function OPTIONS(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const params = await context.params
+    const contestId = params.id
+
+    const token = request.cookies.get("auth-token")?.value
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const payload = await verifyToken(token)
+    if (!payload) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Get distinct razas for this contest
+    const distinctRazas = await prisma.ganado.findMany({
+      where: { contestId },
+      select: { raza: true },
+      distinct: ["raza"],
+    })
+
+    return NextResponse.json({
+      razas: distinctRazas.map((g) => g.raza).filter(Boolean),
+    })
+  } catch (error) {
+    console.error("Error fetching distinct values:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

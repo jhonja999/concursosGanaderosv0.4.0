@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "prisma generate && next build",
-    "dev": "prisma generate && next dev",
+    "build": "prisma generate && next build --turbopack",
+    "dev": "prisma generate && next dev --turbopack",
     "lint": "next lint",
     "start": "next start",
     "postinstall": "prisma generate"

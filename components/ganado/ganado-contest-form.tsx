@@ -956,14 +956,21 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                       name="establoId"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value || ""} onValueChange={field.onChange} disabled={loadingEstablos}>
+                        <Select
+                          value={field.value || "null-establo-option"} // Set default value for Select to a non-empty string
+                          onValueChange={(value) => {
+                            field.onChange(value === "null-establo-option" ? null : value) // Convert special string back to null
+                          }}
+                          disabled={loadingEstablos}
+                        >
                           <SelectTrigger>
                             <SelectValue
                               placeholder={loadingEstablos ? "Cargando establos..." : "Seleccionar establo"}
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin establo</SelectItem>
+                            <SelectItem value="null-establo-option">Sin establo</SelectItem>{" "}
+                            {/* Changed value from "" to "null-establo-option" */}
                             {establos.map((establo) => (
                               <SelectItem key={establo.id} value={establo.id}>
                                 {establo.nombre}
