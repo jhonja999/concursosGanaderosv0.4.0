@@ -12,18 +12,27 @@ import { Search, Filter, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react
 interface GanadoFiltersProps {
   onFiltersChange: (filters: any) => void
   categories?: Array<{ id: string; nombre: string }>
+  breeds?: string[]
+  animalTypes?: string[]
   loading?: boolean
 }
 
-export function GanadoFilters({ onFiltersChange, categories = [], loading = false }: GanadoFiltersProps) {
+export function GanadoFilters({
+  onFiltersChange,
+  categories = [],
+  breeds = [],
+  animalTypes = [],
+  loading = false,
+}: GanadoFiltersProps) {
   const [search, setSearch] = useState("")
   const [categoria, setCategoria] = useState("all")
   const [raza, setRaza] = useState("all")
   const [sexo, setSexo] = useState("all")
   const [enRemate, setEnRemate] = useState("all")
-  const [sortBy, setSortBy] = useState("none")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+  const [sortBy, setSortBy] = useState("createdAt")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [showFilters, setShowFilters] = useState(false)
+  const [tipoAnimal, setTipoAnimal] = useState("all")
 
   // Opciones de ordenamiento
   const sortOptions = [
@@ -35,38 +44,23 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
     { value: "createdAt", label: "Fecha de Registro" },
   ]
 
-  // Razas comunes
-  const razasComunes = [
-    "Holstein",
-    "Angus",
-    "Brahman",
-    "Charolais",
-    "Simmental",
-    "Limousin",
-    "Hereford",
-    "Gyr",
-    "Nelore",
-    "Fleckvieh",
-    "Jersey",
-    "Brown Swiss",
-  ]
-
   useEffect(() => {
     const filters = {
       search: search.trim() || undefined,
-      categoria: categoria === "all" ? undefined : categoria,
+      categoriaId: categoria === "all" ? undefined : categoria,
       raza: raza === "all" ? undefined : raza,
       sexo: sexo === "all" ? undefined : sexo,
       enRemate: enRemate === "all" ? undefined : enRemate,
       sortBy: sortBy === "none" ? undefined : sortBy,
-      sortOrder: sortOrder,
+      sortOrder: sortBy === "none" ? undefined : sortOrder,
+      tipoAnimal: tipoAnimal === "all" ? undefined : tipoAnimal,
     }
 
     // Remover valores undefined
     const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== undefined))
 
     onFiltersChange(cleanFilters)
-  }, [search, categoria, raza, sexo, enRemate, sortBy, sortOrder, onFiltersChange])
+  }, [search, categoria, raza, sexo, enRemate, sortBy, sortOrder, tipoAnimal, onFiltersChange])
 
   const clearFilters = () => {
     setSearch("")
@@ -74,12 +68,20 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
     setRaza("all")
     setSexo("all")
     setEnRemate("all")
-    setSortBy("none")
-    setSortOrder("asc")
+    setSortBy("createdAt")
+    setSortOrder("desc")
+    setTipoAnimal("all")
   }
 
   const hasActiveFilters =
-    search || categoria !== "all" || raza !== "all" || sexo !== "all" || enRemate !== "all" || sortBy !== "none"
+    search ||
+    categoria !== "all" ||
+    raza !== "all" ||
+    sexo !== "all" ||
+    enRemate !== "all" ||
+    sortBy !== "createdAt" ||
+    sortOrder !== "desc" ||
+    tipoAnimal !== "all"
 
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
@@ -122,7 +124,9 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
                         raza !== "all",
                         sexo !== "all",
                         enRemate !== "all",
-                        sortBy !== "none",
+                        sortBy !== "createdAt",
+                        sortOrder !== "desc",
+                        tipoAnimal !== "all",
                       ].filter(Boolean).length
                     }
                   </Badge>
@@ -139,7 +143,25 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
 
           {/* Filtros expandibles */}
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 pt-4 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-4 border-t">
+              {/* Tipo de Animal */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo de Animal</Label>
+                <Select value={tipoAnimal} onValueChange={setTipoAnimal} disabled={loading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    {animalTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Categoría */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Categoría</Label>
@@ -150,7 +172,7 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
                   <SelectContent>
                     <SelectItem value="all">Todas las categorías</SelectItem>
                     {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.nombre}>
+                      <SelectItem key={cat.id} value={cat.id}>
                         {cat.nombre}
                       </SelectItem>
                     ))}
@@ -167,9 +189,9 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las razas</SelectItem>
-                    {razasComunes.map((razaOption) => (
-                      <SelectItem key={razaOption} value={razaOption}>
-                        {razaOption}
+                    {breeds.map((breed) => (
+                      <SelectItem key={breed} value={breed}>
+                        {breed}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -231,7 +253,7 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
                   <Button
                     variant="outline"
                     onClick={toggleSortOrder}
-                    className="w-full justify-start"
+                    className="w-full justify-start bg-transparent"
                     disabled={loading}
                   >
                     {sortOrder === "asc" ? (
@@ -260,9 +282,15 @@ export function GanadoFilters({ onFiltersChange, categories = [], loading = fals
                   <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setSearch("")} />
                 </Badge>
               )}
+              {tipoAnimal !== "all" && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Tipo: {tipoAnimal}
+                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setTipoAnimal("all")} />
+                </Badge>
+              )}
               {categoria !== "all" && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Categoría: {categoria}
+                  Categoría: {categories.find((c) => c.id === categoria)?.nombre || categoria}
                   <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setCategoria("all")} />
                 </Badge>
               )}

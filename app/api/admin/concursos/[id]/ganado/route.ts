@@ -225,10 +225,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       establoId = newEstablo.id
     }
 
+    const finalTipoAnimal = data.tipoAnimal
+    const finalRaza = data.raza
+
     const ganadoData: any = {
       nombre: data.nombre,
       numeroFicha: data.numeroFicha,
-      raza: data.raza,
+      tipoAnimal: finalTipoAnimal,
+      raza: finalRaza,
       sexo: data.sexo,
       descripcion: data.descripcion || null,
       marcasDistintivas: data.marcasDistintivas || null,

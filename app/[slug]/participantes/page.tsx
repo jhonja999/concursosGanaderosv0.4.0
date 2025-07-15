@@ -10,10 +10,12 @@ import Link from "next/link"
 import { GanadoCard } from "@/components/ganado/ganado-card"
 import { GanadoFilters } from "@/components/ganado/ganado-filters"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { GanadoDetailModal } from "@/components/ganado/ganado-detail-modal"
 
 interface Ganado {
   id: string
   nombre: string
+  tipoAnimal?: string
   raza: string
   sexo: "MACHO" | "HEMBRA"
   fechaNacimiento: Date
@@ -42,6 +44,7 @@ interface Ganado {
   }
   contest: {
     nombre: string
+    tipoPuntaje?: "NUMERICO" | "POSICION" | "CALIFICACION" | "PUNTOS"
   }
 }
 
@@ -62,6 +65,7 @@ interface ParticipantesData {
   filters: {
     categories: Array<{ id: string; nombre: string }>
     breeds: string[]
+    animalTypes: string[]
   }
 }
 
@@ -76,6 +80,8 @@ export default function ParticipantesPage({
   const [data, setData] = useState<ParticipantesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
 
   // Ref para evitar múltiples requests simultáneos
   const fetchingRef = useRef(false)
@@ -167,10 +173,16 @@ export default function ParticipantesPage({
     [slug, router],
   )
 
-  const handleViewDetails = useCallback((id: string) => {
-    console.log("Ver detalles:", id)
-    // TODO: Implementar modal de detalles
-  }, [])
+  const handleViewDetails = useCallback(
+    (id: string) => {
+      const animal = data?.ganado.find((g) => g.id === id)
+      if (animal) {
+        setSelectedGanado(animal)
+        setIsModalOpen(true)
+      }
+    },
+    [data],
+  )
 
   const handleContact = useCallback((id: string) => {
     console.log("Contactar:", id)
@@ -270,9 +282,15 @@ export default function ParticipantesPage({
       </div>
 
       {/* Filters */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <GanadoFilters onFiltersChange={handleFiltersChange} categories={filters.categories} loading={loading} />
+          <GanadoFilters
+            onFiltersChange={handleFiltersChange}
+            categories={filters.categories}
+            breeds={filters.breeds}
+            animalTypes={filters.animalTypes}
+            loading={loading}
+          />
         </div>
       </div>
 
@@ -304,8 +322,8 @@ export default function ParticipantesPage({
                     key={animal.id}
                     ganado={animal}
                     variant="public"
-                    onViewDetails={handleViewDetails}
-                    onContact={handleContact}
+                    onViewDetails={() => handleViewDetails(animal.id)}
+                    onContact={() => handleContact(animal.id)}
                   />
                 ))}
               </div>
@@ -350,6 +368,10 @@ export default function ParticipantesPage({
           )
         )}
       </div>
+
+      {isModalOpen && selectedGanado && (
+        <GanadoDetailModal ganado={selectedGanado} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      )}
     </div>
   )
 }

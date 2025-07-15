@@ -18,6 +18,7 @@ import {
   Award,
   Building2,
   MapPin,
+  Tag,
 } from "lucide-react"
 
 interface GanadoCardProps {
@@ -25,6 +26,7 @@ interface GanadoCardProps {
     id: string
     nombre: string
     raza: string
+    tipoAnimal?: string
     sexo: "MACHO" | "HEMBRA"
     fechaNacimiento: Date
     pesoKg: number
@@ -240,9 +242,10 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
 
           {/* Número de ficha */}
           {ganado.numeroFicha && (
-            <div className="absolute bottom-3 right-3">
-              <Badge variant="secondary" className="bg-white/90 text-gray-800">
-                #{ganado.numeroFicha}
+            <div className="absolute top-3 right-3">
+              <Badge variant="secondary" className="bg-white/90 text-gray-800 flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                {ganado.numeroFicha}
               </Badge>
             </div>
           )}
@@ -271,6 +274,10 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
 
         {/* Información básica */}
         <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="flex items-center gap-2 col-span-2">
+            <span className="font-medium">Tipo:</span>
+            <span className="text-gray-600">{ganado.tipoAnimal || "No especificado"}</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">Raza:</span>
             <span className="text-gray-600">{ganado.raza}</span>

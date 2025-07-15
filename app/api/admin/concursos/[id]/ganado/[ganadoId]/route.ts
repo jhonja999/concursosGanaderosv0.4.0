@@ -177,10 +177,14 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       establoId = newEstablo.id
     }
 
+    const finalTipoAnimal = data.tipoAnimal || existingGanado.tipoAnimal
+    const finalRaza = data.raza || existingGanado.raza
+
     const updateData: any = {
       nombre: data.nombre || existingGanado.nombre,
       numeroFicha: data.numeroFicha || existingGanado.numeroFicha,
-      raza: data.raza || existingGanado.raza,
+      tipoAnimal: finalTipoAnimal,
+      raza: finalRaza,
       sexo: data.sexo || existingGanado.sexo,
       descripcion: data.descripcion !== undefined ? data.descripcion : existingGanado.descripcion,
       marcasDistintivas:

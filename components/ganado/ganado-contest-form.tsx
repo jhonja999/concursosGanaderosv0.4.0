@@ -77,6 +77,14 @@ const TIPOS_ANIMALES = {
     label: "Porcino",
     razas: ["Yorkshire", "Landrace", "Duroc", "Hampshire", "Pietrain", "Large White", "Criollo Cundiboyacense"],
   },
+  mascotas: {
+    label: "Mascotas",
+    razas: ["Perro", "Gato", "Pájaro", "Roedor", "Reptil"],
+  },
+  otro: {
+    label: "Otro (especificar)",
+    razas: [],
+  },
 }
 
 const SEXOS = [
@@ -95,8 +103,10 @@ const ESTADOS = [
 interface GanadoFormData {
   // Información básica del animal
   nombre: string
-  tipoAnimal: keyof typeof TIPOS_ANIMALES
+  tipoAnimal: keyof typeof TIPOS_ANIMALES | string
+  otroTipoAnimal?: string
   raza: string
+  otraRaza?: string
   sexo: "MACHO" | "HEMBRA"
   fechaNacimiento?: string
   peso?: number
@@ -163,7 +173,8 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
   const [contest, setContest] = useState<any>(null)
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [loadingEstablos, setLoadingEstablos] = useState(true)
-  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | "">("bovino")
+  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | string | "">("bovino")
+  const [showOtraRazaInput, setShowOtraRazaInput] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [imagenes, setImagenes] = useState<string[]>(initialData?.imagenes || [])
   const [documentos, setDocumentos] = useState<string[]>(initialData?.documentos || [])
@@ -252,10 +263,27 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
     fetchEstablos()
   }, [contestId])
 
-  // Mantener selectedTipoAnimal cuando hay datos iniciales o cuando cambia el valor
   useEffect(() => {
     if (initialData?.tipoAnimal) {
-      setSelectedTipoAnimal(initialData.tipoAnimal)
+      const isKnownType = Object.keys(TIPOS_ANIMALES).includes(initialData.tipoAnimal)
+      if (isKnownType) {
+        setSelectedTipoAnimal(initialData.tipoAnimal)
+      } else {
+        setSelectedTipoAnimal("otro")
+        setValue("otroTipoAnimal", initialData.tipoAnimal, { shouldDirty: true })
+      }
+    }
+
+    if (initialData?.raza) {
+      const currentRazas =
+        initialData?.tipoAnimal && TIPOS_ANIMALES[initialData.tipoAnimal as keyof typeof TIPOS_ANIMALES]
+          ? TIPOS_ANIMALES[initialData.tipoAnimal as keyof typeof TIPOS_ANIMALES].razas
+          : []
+      if (!currentRazas.includes(initialData.raza)) {
+        setValue("raza", "Otra", { shouldDirty: true })
+        setValue("otraRaza", initialData.raza, { shouldDirty: true })
+        setShowOtraRazaInput(true)
+      }
     }
 
     // Inicializar imágenes si existen
@@ -281,6 +309,11 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
       setSelectedTipoAnimal(watchedValues.tipoAnimal)
     }
   }, [watchedValues.tipoAnimal, selectedTipoAnimal])
+
+  // Sincronizar showOtraRazaInput con el valor del formulario
+  useEffect(() => {
+    setShowOtraRazaInput(watchedValues.raza === "Otra")
+  }, [watchedValues.raza])
 
   // Validaciones específicas por tipo de animal
   const validateAnimal = useCallback(() => {
@@ -395,6 +428,16 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
       imagenes,
       documentos,
     }
+
+    if (formData.tipoAnimal === "otro") {
+      formData.tipoAnimal = formData.otroTipoAnimal || ""
+    }
+    if (formData.raza === "Otra") {
+      formData.raza = formData.otraRaza || ""
+    }
+
+    delete formData.otroTipoAnimal
+    delete formData.otraRaza
 
     console.log("Final form data:", formData)
 
@@ -657,7 +700,8 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                         onValueChange={(value) => {
                           field.onChange(value)
                           setSelectedTipoAnimal(value as keyof typeof TIPOS_ANIMALES)
-                          setValue("raza", "", { shouldValidate: false }) // Reset raza when tipo changes
+                          setValue("raza", "", { shouldValidate: true })
+                          setShowOtraRazaInput(false)
                         }}
                       >
                         <SelectTrigger>
@@ -680,6 +724,24 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                   )}
                 </div>
 
+                {selectedTipoAnimal === "otro" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="otroTipoAnimal">Especificar tipo *</Label>
+                    <Input
+                      id="otroTipoAnimal"
+                      {...register("otroTipoAnimal", {
+                        required: "Debe especificar el tipo de animal si selecciona 'Otro'",
+                      })}
+                      placeholder="Ej: Conejo"
+                    />
+                    {errors.otroTipoAnimal && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{errors.otroTipoAnimal.message}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="raza">Raza *</Label>
                   <Controller
@@ -687,17 +749,33 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                     control={control}
                     rules={{ required: "La raza es requerida" }}
                     render={({ field }) => (
-                      <Select value={field.value || ""} onValueChange={field.onChange} disabled={!selectedTipoAnimal}>
+                      <Select
+                        value={field.value || ""}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          setShowOtraRazaInput(value === "Otra")
+                        }}
+                        disabled={!selectedTipoAnimal || selectedTipoAnimal === "otro"}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar raza" />
+                          <SelectValue
+                            placeholder={
+                              !selectedTipoAnimal || selectedTipoAnimal === "otro"
+                                ? "Seleccione un tipo primero"
+                                : "Seleccionar raza"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {selectedTipoAnimal &&
-                            TIPOS_ANIMALES[selectedTipoAnimal].razas.map((raza) => (
+                            TIPOS_ANIMALES[selectedTipoAnimal as keyof typeof TIPOS_ANIMALES]?.razas.map((raza) => (
                               <SelectItem key={raza} value={raza}>
                                 {raza}
                               </SelectItem>
                             ))}
+                          {selectedTipoAnimal && selectedTipoAnimal !== "otro" && (
+                            <SelectItem value="Otra">Otra (especificar)</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     )}
@@ -708,6 +786,22 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
                     </Alert>
                   )}
                 </div>
+
+                {showOtraRazaInput && (
+                  <div className="space-y-2">
+                    <Label htmlFor="otraRaza">Especificar raza *</Label>
+                    <Input
+                      id="otraRaza"
+                      {...register("otraRaza", { required: "Debe especificar la raza si selecciona 'Otra'" })}
+                      placeholder="Ej: Criollo"
+                    />
+                    {errors.otraRaza && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{errors.otraRaza.message}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="sexo">Sexo *</Label>
