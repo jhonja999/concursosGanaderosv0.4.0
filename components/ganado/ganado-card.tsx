@@ -240,7 +240,7 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
 
           {/* Número de ficha */}
           {ganado.numeroFicha && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute bottom-3 right-3">
               <Badge variant="secondary" className="bg-white/90 text-gray-800">
                 #{ganado.numeroFicha}
               </Badge>

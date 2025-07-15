@@ -297,10 +297,10 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-green-600 border-green-600">
+          {/* <Badge variant="outline" className="text-green-600 border-green-600">
             <Activity className="h-3 w-3 mr-1" />
             Sistema Activo
-          </Badge>
+          </Badge> */}
           <Button onClick={handleManualRefresh} variant="outline" size="sm" disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Actualizando..." : "Actualizar"}
