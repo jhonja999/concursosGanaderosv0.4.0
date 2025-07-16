@@ -14,6 +14,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 import { prisma } from "@/lib/prisma";
 import AnimalSlider from "@/components/AnimalSlider";
+import ClientNavbar from "@/components/shared/clientnavbar";
 
 // Tipos simplificados según el schema real
 type ContestWithCompany = {
@@ -82,54 +83,7 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
-      <nav className="absolute top-0 left-0 right-0 z-50 bg-emerald-600">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2">
-              <Logo
-                size="md"
-                className="text-white [&>div]:bg-white [&>div]:text-emerald-600"
-                href="/"
-              />
-            </div>
-            <div className="hidden md:flex items-center space-x-6">
-              <Link
-                href="/concursos"
-                className="text-white hover:text-emerald-100 transition-colors"
-              >
-                Concursos
-              </Link>
-              <Link
-                href="/ganado"
-                className="text-white hover:text-emerald-100 transition-colors"
-              >
-                Ganado
-              </Link>
-              <Link
-                href="/companias"
-                className="text-white hover:text-emerald-100 transition-colors"
-              >
-                Empresas
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/iniciar-sesion">
-                <Button
-                  variant="ghost"
-                  className="text-white hover:bg-white/20"
-                >
-                  Iniciar Sesión
-                </Button>
-              </Link>
-              <Link href="/registro">
-                <Button className="bg-white text-emerald-600 hover:bg-emerald-50">
-                  Registrarse
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+        <ClientNavbar/>
 
       {/* Hero Section with Background Image and Slider */}
       <section className="w-full h-screen relative overflow-hidden">
