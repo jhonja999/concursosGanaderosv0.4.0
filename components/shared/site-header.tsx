@@ -1,7 +1,6 @@
 "use client"
 import { Logo } from "@/components/shared/logo"
 import { MainNav } from "@/components/shared/main-nav"
-import { MobileNav } from "@/components/shared/mobile-nav"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export function SiteHeader() {
@@ -20,7 +19,6 @@ export function SiteHeader() {
           {/* Controles de la derecha */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <MobileNav />
           </div>
         </div>
       </div>

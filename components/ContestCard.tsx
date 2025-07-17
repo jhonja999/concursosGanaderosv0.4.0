@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, MapPin, Users, Building2, Trophy, Eye, Star, Clock, Beef, Heart, Award, Zap } from "lucide-react"
+import { Calendar, MapPin, Users, Building2, Trophy, Eye, Star, Clock, UserRoundSearch, Heart, Award, Zap } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -81,7 +81,7 @@ function getAnimalIcon(tipoGanado?: string[]) {
     tipos.includes("vaca") ||
     tipos.includes("res")
   ) {
-    return <Beef className="h-4 w-4" />
+    return <UserRoundSearch className="h-4 w-4" />
   }
 
   if (tipos.includes("equino") || tipos.includes("caballo") || tipos.includes("yegua") || tipos.includes("potro")) {

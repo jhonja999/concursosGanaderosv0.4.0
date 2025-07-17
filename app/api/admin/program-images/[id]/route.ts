@@ -2,9 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params
     const token = request.cookies.get("auth-token")?.value
 
     if (!token) {
@@ -12,30 +11,82 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const payload = await verifyToken(token)
-    if (
-      !payload ||
-      !payload.roles ||
-      !Array.isArray(payload.roles) ||
-      !payload.roles.some((role) => ["SUPERADMIN", "CONCURSO_ADMIN"].includes(role))
-    ) {
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    const image = await prisma.programImage.findUnique({
+      where: { id: params.id },
+      include: {
+        uploadedBy: {
+          select: {
+            nombre: true,
+            apellido: true,
+          },
+        },
+      },
+    })
+
+    if (!image) {
+      return NextResponse.json({ error: "Imagen no encontrada" }, { status: 404 })
+    }
+
+    return NextResponse.json({ image })
+  } catch (error) {
+    console.error("Error fetching program image:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const token = request.cookies.get("auth-token")?.value
+
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const payload = await verifyToken(token)
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Check if user has admin role
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true },
+    })
+
+    if (!user || !["SUPERADMIN", "ADMIN"].includes(user.role)) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
     const body = await request.json()
-    const { title, description, eventDate, eventTime, location, order, isActive } = body
+    const { title, description, imageUrl, publicId, eventDate, eventTime, location, isActive } = body
+
+    // Check if image exists
+    const existingImage = await prisma.programImage.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!existingImage) {
+      return NextResponse.json({ error: "Imagen no encontrada" }, { status: 404 })
+    }
+
+    const updateData: any = {}
+
+    if (title !== undefined) updateData.title = title
+    if (description !== undefined) updateData.description = description
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (publicId !== undefined) updateData.publicId = publicId
+    if (eventDate !== undefined) updateData.eventDate = eventDate ? new Date(eventDate) : null
+    if (eventTime !== undefined) updateData.eventTime = eventTime
+    if (location !== undefined) updateData.location = location
+    if (isActive !== undefined) updateData.isActive = isActive
 
     const image = await prisma.programImage.update({
-      where: { id },
-      data: {
-        title: title !== undefined ? title : undefined,
-        description: description !== undefined ? description : undefined,
-        eventDate: eventDate !== undefined ? (eventDate ? new Date(eventDate) : null) : undefined,
-        eventTime: eventTime !== undefined ? eventTime : undefined,
-        location: location !== undefined ? location : undefined,
-        order: order !== undefined ? order : undefined,
-        isActive: isActive !== undefined ? isActive : undefined,
-        updatedAt: new Date(),
-      },
+      where: { id: params.id },
+      data: updateData,
       include: {
         uploadedBy: {
           select: {
@@ -53,9 +104,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params
     const token = request.cookies.get("auth-token")?.value
 
     if (!token) {
@@ -63,20 +113,34 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const payload = await verifyToken(token)
-    if (
-      !payload ||
-      !payload.roles ||
-      !Array.isArray(payload.roles) ||
-      !payload.roles.some((role) => ["SUPERADMIN", "CONCURSO_ADMIN"].includes(role))
-    ) {
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Check if user has admin role
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true },
+    })
+
+    if (!user || !["SUPERADMIN", "ADMIN"].includes(user.role)) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    await prisma.programImage.delete({
-      where: { id },
+    // Check if image exists
+    const existingImage = await prisma.programImage.findUnique({
+      where: { id: params.id },
     })
 
-    return NextResponse.json({ message: "Imagen eliminada exitosamente" })
+    if (!existingImage) {
+      return NextResponse.json({ error: "Imagen no encontrada" }, { status: 404 })
+    }
+
+    await prisma.programImage.delete({
+      where: { id: params.id },
+    })
+
+    return NextResponse.json({ message: "Imagen eliminada correctamente" })
   } catch (error) {
     console.error("Error deleting program image:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

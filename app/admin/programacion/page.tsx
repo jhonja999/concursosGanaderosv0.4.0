@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Edit, Trash2, ImageIcon, GripVertical, Calendar, Clock, MapPin, Search, Download } from "lucide-react"
+import { Plus, Edit, Trash2, ImageIcon, Calendar, Clock, MapPin, Search, Download, Loader2, Eye } from "lucide-react"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 import { toast } from "sonner"
 import Image from "next/image"
@@ -60,12 +60,13 @@ export default function AdminProgramacionPage() {
   const [images, setImages] = useState<ProgramImage[]>([])
   const [filteredImages, setFilteredImages] = useState<ProgramImage[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingImage, setEditingImage] = useState<ProgramImage | null>(null)
-  const [draggedItem, setDraggedItem] = useState<string | null>(null)
-  const [dragOverItem, setDragOverItem] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [selectedImage, setSelectedImage] = useState<ProgramImage | null>(null)
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -86,18 +87,23 @@ export default function AdminProgramacionPage() {
 
   const fetchImages = async () => {
     try {
+      setLoading(true)
       const response = await fetch("/api/admin/program-images", {
         cache: "no-store",
       })
+
       if (response.ok) {
         const data = await response.json()
-        setImages(data.images)
+        setImages(data.images || [])
       } else {
-        toast.error("Error al cargar las imágenes")
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al cargar las imágenes")
+        setImages([])
       }
     } catch (error) {
       console.error("Error fetching images:", error)
       toast.error("Error al cargar las imágenes")
+      setImages([])
     } finally {
       setLoading(false)
     }
@@ -124,16 +130,30 @@ export default function AdminProgramacionPage() {
     setFilteredImages(filtered)
   }
 
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      eventDate: "",
+      eventTime: "",
+      location: "",
+      imageUrl: "",
+      publicId: "",
+    })
+    setEditingImage(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!formData.title || !formData.imageUrl) {
       toast.error("Título e imagen son obligatorios")
       return
     }
 
+    setSubmitting(true)
     try {
       const url = editingImage ? `/api/admin/program-images/${editingImage.id}` : "/api/admin/program-images"
+
       const method = editingImage ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -141,30 +161,31 @@ export default function AdminProgramacionPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          imageUrl: formData.imageUrl,
+          publicId: formData.publicId,
+          eventDate: formData.eventDate,
+          eventTime: formData.eventTime,
+          location: formData.location,
+        }),
       })
 
       if (response.ok) {
-        toast.success(editingImage ? "Imagen actualizada" : "Imagen agregada")
+        toast.success(editingImage ? "Imagen actualizada correctamente" : "Imagen agregada correctamente")
         setIsDialogOpen(false)
-        setEditingImage(null)
-        setFormData({
-          title: "",
-          description: "",
-          eventDate: "",
-          eventTime: "",
-          location: "",
-          imageUrl: "",
-          publicId: "",
-        })
+        resetForm()
         fetchImages()
       } else {
-        const error = await response.json()
-        toast.error(error.error || "Error al guardar la imagen")
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al guardar la imagen")
       }
     } catch (error) {
       console.error("Error saving image:", error)
       toast.error("Error al guardar la imagen")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -187,12 +208,12 @@ export default function AdminProgramacionPage() {
       const response = await fetch(`/api/admin/program-images/${id}`, {
         method: "DELETE",
       })
-
       if (response.ok) {
-        toast.success("Imagen eliminada")
+        toast.success("Imagen eliminada correctamente")
         fetchImages()
       } else {
-        toast.error("Error al eliminar la imagen")
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al eliminar la imagen")
       }
     } catch (error) {
       console.error("Error deleting image:", error)
@@ -209,12 +230,12 @@ export default function AdminProgramacionPage() {
         },
         body: JSON.stringify({ isActive }),
       })
-
       if (response.ok) {
         toast.success(isActive ? "Imagen activada" : "Imagen desactivada")
         fetchImages()
       } else {
-        toast.error("Error al actualizar el estado")
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al actualizar el estado")
       }
     } catch (error) {
       console.error("Error updating status:", error)
@@ -222,83 +243,22 @@ export default function AdminProgramacionPage() {
     }
   }
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, imageId: string) => {
-    setDraggedItem(imageId)
-    e.dataTransfer.effectAllowed = "move"
-  }
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
-  }
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, imageId: string) => {
-    e.preventDefault()
-    setDragOverItem(imageId)
-  }
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setDragOverItem(null)
-  }
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetImageId: string) => {
-    e.preventDefault()
-
-    if (!draggedItem || draggedItem === targetImageId) {
-      setDraggedItem(null)
-      setDragOverItem(null)
-      return
-    }
-
-    const draggedIndex = images.findIndex((img) => img.id === draggedItem)
-    const targetIndex = images.findIndex((img) => img.id === targetImageId)
-
-    if (draggedIndex === -1 || targetIndex === -1) return
-
-    const newImages = [...images]
-    const [draggedImage] = newImages.splice(draggedIndex, 1)
-    newImages.splice(targetIndex, 0, draggedImage)
-
-    setImages(newImages)
-    setDraggedItem(null)
-    setDragOverItem(null)
-
-    try {
-      const imageIds = newImages.map((item) => item.id)
-      const response = await fetch("/api/admin/program-images/reorder", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ imageIds }),
-      })
-
-      if (!response.ok) {
-        toast.error("Error al reordenar las imágenes")
-        fetchImages()
-      } else {
-        toast.success("Orden actualizado")
-      }
-    } catch (error) {
-      console.error("Error reordering images:", error)
-      toast.error("Error al reordenar las imágenes")
-      fetchImages()
-    }
-  }
-
-  const handleImageUpload = (url: string) => {
-    setFormData({
-      ...formData,
+  const handleImageUpload = (url: string, publicId?: string) => {
+    setFormData((prev) => ({
+      ...prev,
       imageUrl: url,
-      publicId: "",
-    })
+      publicId: publicId || "",
+    }))
+  }
+
+  const handleViewImage = (image: ProgramImage) => {
+    setSelectedImage(image)
+    setIsViewDialogOpen(true)
   }
 
   const exportData = () => {
     const dataStr = JSON.stringify(images, null, 2)
     const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr)
-
     const exportFileDefaultName = `programacion-${new Date().toISOString().split("T")[0]}.json`
 
     const linkElement = document.createElement("a")
@@ -313,7 +273,7 @@ export default function AdminProgramacionPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Gestión de Programación</h1>
-            <p className="text-gray-600">Sistema de gestión de contenido para programación</p>
+            <p className="text-gray-600 dark:text-gray-400">Sistema de gestión de contenido para programación</p>
           </div>
         </div>
         <TableSkeleton rows={8} />
@@ -326,18 +286,18 @@ export default function AdminProgramacionPage() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Gestión de Programación</h1>
-          <p className="text-gray-600">Sistema de gestión de contenido para programación de eventos</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Sistema de gestión de contenido para programación de eventos
+          </p>
         </div>
-
         <div className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={exportData}>
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
-
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingImage(null)}>
+              <Button onClick={resetForm}>
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Imagen
               </Button>
@@ -349,7 +309,6 @@ export default function AdminProgramacionPage() {
                   {editingImage ? "Modifica los datos de la imagen" : "Agrega una nueva imagen a la programación"}
                 </DialogDescription>
               </DialogHeader>
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label htmlFor="title">Título *</Label>
@@ -357,11 +316,10 @@ export default function AdminProgramacionPage() {
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Ej: Inauguración de la 63.ª Feria Fongal"
+                    placeholder="Ej: Inauguración de la Feria"
                     required
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="description">Descripción</Label>
                   <Textarea
@@ -372,7 +330,6 @@ export default function AdminProgramacionPage() {
                     rows={3}
                   />
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="eventDate">Fecha del Evento</Label>
@@ -383,7 +340,6 @@ export default function AdminProgramacionPage() {
                       onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
                     />
                   </div>
-
                   <div>
                     <Label htmlFor="eventTime">Hora</Label>
                     <Input
@@ -393,7 +349,6 @@ export default function AdminProgramacionPage() {
                       placeholder="Ej: 10:00 a.m."
                     />
                   </div>
-
                   <div>
                     <Label htmlFor="location">Ubicación</Label>
                     <Input
@@ -404,7 +359,6 @@ export default function AdminProgramacionPage() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <Label>Imagen *</Label>
                   <CloudinaryUpload
@@ -414,14 +368,36 @@ export default function AdminProgramacionPage() {
                     label="Imagen del evento"
                     description="Sube una imagen para el evento de programación"
                   />
+                  {formData.imageUrl && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Vista previa</Label>
+                      <div className="relative w-full h-48 mt-2 rounded-lg overflow-hidden border">
+                        <Image
+                          src={formData.imageUrl || "/placeholder.svg"}
+                          alt="Vista previa"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={!formData.title || !formData.imageUrl}>
-                    {editingImage ? "Actualizar" : "Agregar"}
+                  <Button type="submit" disabled={submitting || !formData.title || !formData.imageUrl}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {editingImage ? "Actualizando..." : "Agregando..."}
+                      </>
+                    ) : editingImage ? (
+                      "Actualizar"
+                    ) : (
+                      "Agregar"
+                    )}
                   </Button>
                 </div>
               </form>
@@ -464,6 +440,69 @@ export default function AdminProgramacionPage() {
         </CardContent>
       </Card>
 
+      {/* View Image Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedImage?.title}</DialogTitle>
+            <DialogDescription>Vista detallada de la imagen de programación</DialogDescription>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="space-y-4">
+              <div className="relative w-full h-96 rounded-lg overflow-hidden">
+                <Image
+                  src={selectedImage.imageUrl || "/placeholder.svg"}
+                  alt={selectedImage.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 80vw"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold">Título</Label>
+                  <p className="text-sm text-gray-600">{selectedImage.title}</p>
+                </div>
+                {selectedImage.description && (
+                  <div>
+                    <Label className="font-semibold">Descripción</Label>
+                    <p className="text-sm text-gray-600">{selectedImage.description}</p>
+                  </div>
+                )}
+                {selectedImage.eventDate && (
+                  <div>
+                    <Label className="font-semibold">Fecha del Evento</Label>
+                    <p className="text-sm text-gray-600">
+                      {format(new Date(selectedImage.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                    </p>
+                  </div>
+                )}
+                {selectedImage.eventTime && (
+                  <div>
+                    <Label className="font-semibold">Hora</Label>
+                    <p className="text-sm text-gray-600">{selectedImage.eventTime}</p>
+                  </div>
+                )}
+                {selectedImage.location && (
+                  <div>
+                    <Label className="font-semibold">Ubicación</Label>
+                    <p className="text-sm text-gray-600">{selectedImage.location}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="font-semibold">Estado</Label>
+                  <div className="mt-1">
+                    <Badge variant={selectedImage.isActive ? "default" : "secondary"}>
+                      {selectedImage.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {filteredImages.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -485,113 +524,91 @@ export default function AdminProgramacionPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Imágenes de Programación ({filteredImages.length})</span>
-              <Badge variant="outline" className="ml-2">
-                {images.filter((img) => img.isActive).length} activas
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredImages.map((image) => (
-                <div
-                  key={image.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, image.id)}
-                  onDragOver={handleDragOver}
-                  onDragEnter={(e) => handleDragEnter(e, image.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, image.id)}
-                  className={`flex items-center gap-4 p-4 border rounded-lg bg-white transition-all duration-200 cursor-move ${
-                    draggedItem === image.id ? "opacity-50 scale-95" : ""
-                  } ${dragOverItem === image.id ? "border-blue-500 bg-blue-50" : "hover:shadow-md"}`}
-                >
-                  <div className="cursor-grab active:cursor-grabbing">
-                    <GripVertical className="h-5 w-5 text-gray-400" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredImages.map((image) => (
+            <Card key={image.id} className="group hover:shadow-lg transition-all duration-200">
+              <CardContent className="p-0">
+                <div className="relative aspect-video overflow-hidden rounded-t-lg">
+                  <Image
+                    src={image.imageUrl || "/placeholder.svg"}
+                    alt={image.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-200"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={image.isActive ? "default" : "secondary"}>
+                      {image.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
                   </div>
-
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                    <Image
-                      src={image.imageUrl || "/placeholder.svg"}
-                      alt={image.title}
-                      fill
-                      className="object-cover"
-                      sizes="80px"
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold truncate">{image.title}</h3>
-                      <Badge variant={image.isActive ? "default" : "secondary"}>
-                        {image.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </div>
-
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-lg line-clamp-2">{image.title}</h3>
                     {image.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">{image.description}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2 mt-1">{image.description}</p>
                     )}
-
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      {image.eventDate && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(image.eventDate), "dd MMM yyyy", { locale: es })}
-                        </div>
-                      )}
-                      {image.eventTime && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {image.eventTime}
-                        </div>
-                      )}
-                      {image.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {image.location}
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-2 text-xs text-gray-500">
+                    {image.eventDate && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(image.eventDate), "dd MMM yyyy", { locale: es })}
+                      </div>
+                    )}
+                    {image.eventTime && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {image.eventTime}
+                      </div>
+                    )}
+                    {image.location && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {image.location}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t">
                     <Switch
                       checked={image.isActive}
                       onCheckedChange={(checked) => handleToggleActive(image.id, checked)}
                     />
-
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(image)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar imagen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. La imagen será eliminada permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(image.id)}>Eliminar</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleViewImage(image)} className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(image)} className="h-8 w-8 p-0">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar imagen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. La imagen será eliminada permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(image.id)}>Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
-import { FetchOptimizer } from "@/lib/fetch-optimization"
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,18 +11,23 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = await verifyToken(token)
-    if (
-      !payload ||
-      !payload.roles ||
-      !Array.isArray(payload.roles) ||
-      !payload.roles.some((role) => ["SUPERADMIN", "CONCURSO_ADMIN"].includes(role))
-    ) {
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Check if user has admin role
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true },
+    })
+
+    if (!user || !["SUPERADMIN", "ADMIN"].includes(user.role)) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    // Use optimized query with proper indexing
+    // Fetch program images with proper error handling
     const images = await prisma.programImage.findMany({
-      orderBy: { order: "asc" },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       include: {
         uploadedBy: {
           select: {
@@ -34,14 +38,20 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Set cache headers for better performance
-    const response = NextResponse.json({ images })
-    response.headers.set("Cache-Control", "private, max-age=300") // 5 minutes cache
-
-    return response
+    return NextResponse.json({
+      images: images || [],
+      total: images.length,
+    })
   } catch (error) {
     console.error("Error fetching program images:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Error interno del servidor",
+        images: [],
+        total: 0,
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -54,23 +64,28 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await verifyToken(token)
-    if (
-      !payload ||
-      !payload.roles ||
-      !Array.isArray(payload.roles) ||
-      !payload.roles.some((role) => ["SUPERADMIN", "CONCURSO_ADMIN"].includes(role))
-    ) {
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
+    }
+
+    // Check if user has admin role
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true },
+    })
+
+    if (!user || !["SUPERADMIN", "ADMIN"].includes(user.role)) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
     const body = await request.json()
     const { title, description, imageUrl, publicId, eventDate, eventTime, location, order } = body
 
-    if (!title || !imageUrl || !publicId) {
-      return NextResponse.json({ error: "Título, imagen y publicId son obligatorios" }, { status: 400 })
+    if (!title || !imageUrl) {
+      return NextResponse.json({ error: "Título e imagen son obligatorios" }, { status: 400 })
     }
 
-    // Get the next order if not provided - optimized query
+    // Get the next order if not provided
     let finalOrder = order
     if (finalOrder === undefined || finalOrder === null) {
       const lastImage = await prisma.programImage.findFirst({
@@ -83,14 +98,15 @@ export async function POST(request: NextRequest) {
     const image = await prisma.programImage.create({
       data: {
         title,
-        description,
+        description: description || null,
         imageUrl,
-        publicId,
+        publicId: publicId || "",
         eventDate: eventDate ? new Date(eventDate) : null,
-        eventTime,
-        location,
+        eventTime: eventTime || null,
+        location: location || null,
         order: finalOrder,
         uploadedById: payload.userId,
+        isActive: true,
       },
       include: {
         uploadedBy: {
@@ -101,10 +117,6 @@ export async function POST(request: NextRequest) {
         },
       },
     })
-
-    // Clear related caches
-    FetchOptimizer.clearCache("/api/admin/program-images")
-    FetchOptimizer.clearCache("/api/program-images")
 
     return NextResponse.json({ image })
   } catch (error) {

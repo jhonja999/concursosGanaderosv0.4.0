@@ -919,7 +919,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
               </div>
 
               {existingImage?.exists && (
-                <Alert>
+                <Alert className="dark:bg-secondary/50 dark:border-border">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-2">
@@ -958,7 +958,12 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
               <div className="flex gap-2">
                 {existingImage?.exists ? (
                   <>
-                    <Button onClick={handleUseExisting} variant="outline" className="flex-1" disabled={isUploading}>
+                    <Button
+                      onClick={handleUseExisting}
+                      variant="outline"
+                      className="flex-1 bg-transparent"
+                      disabled={isUploading}
+                    >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Usar Existente
                     </Button>

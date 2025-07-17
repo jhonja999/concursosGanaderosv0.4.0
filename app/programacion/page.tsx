@@ -108,7 +108,7 @@ export default function ProgramacionPage() {
         </div>
 
         {/* Información destacada */}
-        <Card className="border-2 border-green-200 bg-green-50 mb-8">
+       {/*  <Card className="border-2 border-green-200 bg-green-50 mb-8">
           <CardContent className="p-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-green-800 mb-2">
@@ -127,7 +127,7 @@ export default function ProgramacionPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {loading ? (
           <ImageGridSkeleton items={6} />

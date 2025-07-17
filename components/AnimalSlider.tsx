@@ -74,24 +74,26 @@ export default function AnimalSlider() {
         </div>
       </div>
 
-      {/* Ribbon - Lower z-index to be behind the images */}
-      <div className="absolute inset-0 z-10">
+      {/* Ribbon - Responsive positioning */}
+      <div className="absolute inset-0 z-40 md:z-10">
         <div
-          className={`absolute bottom-1/3 left-0 right-0 transform -skew-y-1 transition-all duration-500 ${
+          className={`absolute bottom-1/3 md:bottom-1/3 left-0 right-0 transform -skew-y-1 transition-all duration-500 ${
             isTransitioning ? "translate-y-0 opacity-0" : "translate-y-full opacity-100"
           }`}
         >
-          <div className="bg-gradient-to-r from-teal-950/90 via-teal-700/80 to-teal-600/60 text-white p-4 shadow-lg">
-            <div className="max-w-4xl mx-auto px-4">
-              <h3 className="text-2xl md:text-3xl font-bold mb-2 -mx-12">{animals[currentAnimal].name}</h3>
-              <p className="text-lg">{animals[currentAnimal].description}</p>
+          <div className="bg-gradient-to-r from-teal-950/90 via-teal-700/80 to-teal-600/60 text-white p-3 md:p-4 shadow-lg">
+            <div className="max-w-4xl mx-auto px-2 md:px-4">
+              <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2 -mx-4 md:-mx-12">
+                {animals[currentAnimal].name}
+              </h3>
+              <p className="text-base md:text-lg">{animals[currentAnimal].description}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Dots */}
-      <div className="absolute bottom-16 left-0 right-0 flex justify-center gap-3 z-40">
+      <div className="absolute bottom-16 left-0 right-0 flex justify-center gap-3 z-50">
         {animals.map((_, index: number) => (
           <button
             key={index}
