@@ -28,11 +28,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Plus, Edit, Trash2, Building2, ImageIcon, ExternalLink } from "lucide-react"
-import Link from "next/link"
+import { Plus, Edit, Trash2, Building2, ImageIcon, ExternalLink } from "lucide-react"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
 
 interface Auspiciador {
   id: string
@@ -209,21 +209,16 @@ export default function AuspiciadoresPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/concursos/${resolvedParams.id}/editar`}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver al Concurso
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Gestionar Auspiciadores</h1>
-            <p className="text-muted-foreground">{contest.nombre}</p>
-          </div>
-        </div>
-
+      <PageHeader
+        title="Gestionar Auspiciadores"
+        description={contest.nombre}
+        breadcrumbItems={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Concursos", href: "/admin/concursos" },
+          { label: contest.nombre, href: `/admin/concursos/${resolvedParams.id}` },
+          { label: "Auspiciadores" },
+        ]}
+      >
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => openDialog()}>
@@ -302,7 +297,7 @@ export default function AuspiciadoresPage({ params }: { params: Promise<{ id: st
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {/* Content */}
       <Card>
@@ -348,13 +343,22 @@ export default function AuspiciadoresPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openDialog(auspiciador)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent"
+                        onClick={() => openDialog(auspiciador)}
+                      >
                         <Edit className="h-3 w-3 mr-1" />
                         Editar
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 bg-transparent"
+                          >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </AlertDialogTrigger>

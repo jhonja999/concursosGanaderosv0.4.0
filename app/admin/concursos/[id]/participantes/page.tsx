@@ -21,10 +21,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Eye, Download, ArrowLeft } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Eye, Download } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
 
 interface Ganado {
   id: string
@@ -109,7 +110,7 @@ export default function ParticipantesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
-  const [contest, setContest] = useState<any>(null)
+  const [contestName, setContestName] = useState<string>("") // State to hold contest name for breadcrumbs
 
   // Data for filters
   const [categorias, setCategorias] = useState<ContestCategory[]>([])
@@ -180,15 +181,18 @@ export default function ParticipantesPage() {
 
   useEffect(() => {
     if (contestId) {
-      const fetchContest = async () => {
+      const fetchContestDetails = async () => {
         try {
           const response = await fetch(`/api/admin/concursos/${contestId}`)
-          if (response.ok) setContest(await response.json())
+          if (response.ok) {
+            const data = await response.json()
+            setContestName(data.contest?.nombre || "Concurso")
+          }
         } catch (error) {
           console.error("Error fetching contest:", error)
         }
       }
-      fetchContest()
+      fetchContestDetails()
       fetchFilterData()
     }
   }, [contestId, fetchFilterData])
@@ -256,17 +260,16 @@ export default function ParticipantesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Participantes</h1>
-            <p className="text-muted-foreground">{contest?.nombre}</p>
-          </div>
-        </div>
+      <PageHeader
+        title="Participantes"
+        description={contestName}
+        breadcrumbItems={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Concursos", href: "/admin/concursos" },
+          { label: contestName, href: `/admin/concursos/${contestId}` },
+          { label: "Participantes" },
+        ]}
+      >
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportData}>
             <Download className="h-4 w-4 mr-2" />
@@ -277,7 +280,7 @@ export default function ParticipantesPage() {
             Registrar Animal
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>

@@ -15,11 +15,16 @@ import {
   Mail,
   CalendarDays,
   Eye,
+  Beef,
+  Heart,
+  Award,
+  Zap,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
 import { SponsorsSection } from "@/components/shared/sponsors-section"
+import { Breadcrumbs } from "@/components/shared/breadcrumbs"
 
 // Add Event type to the interface
 interface Event {
@@ -71,6 +76,43 @@ interface Contest {
   }
 }
 
+// Función para obtener el icono según el tipo de ganado
+function getAnimalIcon(tipoGanado?: string[]) {
+  if (!tipoGanado || tipoGanado.length === 0) {
+    return <Trophy className="h-5 w-5" />
+  }
+
+  const tipos = tipoGanado.join(" ").toLowerCase()
+
+  if (
+    tipos.includes("bovino") ||
+    tipos.includes("vacuno") ||
+    tipos.includes("toro") ||
+    tipos.includes("vaca") ||
+    tipos.includes("res")
+  ) {
+    return <Beef className="h-5 w-5" />
+  }
+
+  if (tipos.includes("equino") || tipos.includes("caballo") || tipos.includes("yegua") || tipos.includes("potro")) {
+    return <Zap className="h-5 w-5" />
+  }
+
+  if (tipos.includes("ovino") || tipos.includes("oveja") || tipos.includes("carnero") || tipos.includes("cordero")) {
+    return <Heart className="h-5 w-5" />
+  }
+
+  if (tipos.includes("caprino") || tipos.includes("cabra") || tipos.includes("chivo") || tipos.includes("macho")) {
+    return <Award className="h-5 w-5" />
+  }
+
+  if (tipos.includes("porcino") || tipos.includes("cerdo") || tipos.includes("cochino") || tipos.includes("marrano")) {
+    return <Users className="h-5 w-5" />
+  }
+
+  return <Trophy className="h-5 w-5" />
+}
+
 async function getContest(slug: string): Promise<Contest | null> {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/concursos/${slug}`, {
@@ -115,12 +157,16 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
     return <Badge variant="default">En curso</Badge>
   }
 
+  const animalIcon = getAnimalIcon(contest.tipoGanado)
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="relative container mx-auto px-4 py-16">
+      {/* Hero Section - Optimizado para móvil */}
+      <div className="bg-gradient-to-br from-green-700 via-green-600 to-emerald-600 text-white relative overflow-hidden">
+        {/* Patrón de fondo sutil */}
+        <div className="absolute inset-0 bg-black/10"></div>
+
+        <div className="container mx-auto px-4 py-12 sm:py-16 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="flex justify-center mb-4">{getStatusBadge()}</div>
             <h1 className="text-4xl md:text-6xl font-bold mb-6">{contest.nombre}</h1>
@@ -141,7 +187,7 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
               )}
               {contest.participantCount && contest.participantCount > 0 && (
                 <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
+                  {animalIcon}
                   <span>{contest.participantCount} participantes</span>
                 </div>
               )}
@@ -164,6 +210,8 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
+        <Breadcrumbs items={[{ label: "Concursos", href: "/concursos" }, { label: contest.nombre }]} />
+
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-8">
@@ -292,7 +340,7 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
+                    {animalIcon}
                     Participantes
                   </CardTitle>
                 </CardHeader>
@@ -387,7 +435,7 @@ export default async function ConcursoPublicoPage({ params }: { params: Promise<
                 {contest.company.descripcion && <p className="text-sm text-gray-700">{contest.company.descripcion}</p>}
 
                 {contest.company.website && (
-                  <Button variant="outline" size="sm" asChild className="w-full">
+                  <Button variant="outline" size="sm" asChild className="w-full bg-transparent">
                     <Link href={contest.company.website} target="_blank">
                       <Globe className="h-4 w-4 mr-2" />
                       Visitar Sitio Web

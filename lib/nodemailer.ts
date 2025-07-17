@@ -83,7 +83,7 @@ export const emailTemplates = {
             <strong>Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</strong></p>
           </div>
           <div class="footer">
-            <p>© 2024 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
+            <p>© 2025 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
             <p>Este es un email automático, por favor no respondas a este mensaje.</p>
           </div>
         </div>
@@ -212,7 +212,7 @@ export const emailTemplates = {
             <strong>Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</strong></p>
           </div>
           <div class="footer">
-            <p>© 2024 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
+            <p>© 2025 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
           </div>
         </div>
       </body>
@@ -270,7 +270,7 @@ export const emailTemplates = {
             <strong>Equipo de ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}</strong></p>
           </div>
           <div class="footer">
-            <p>© 2024 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
+            <p>© 2025 ${process.env.COMPANY_NAME || "Lo Mejor de Mi Tierra"}. Todos los derechos reservados.</p>
           </div>
         </div>
       </body>

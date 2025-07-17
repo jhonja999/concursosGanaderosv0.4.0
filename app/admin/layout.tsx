@@ -19,9 +19,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Trophy,
+  Calendar,
+  Settings,
+  Database,
+  BarChart3,
+  ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  Folder,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface User {
   id: string
@@ -43,37 +52,161 @@ interface Notification {
   metadata?: any
 }
 
-const navigation = [
+interface NavigationItem {
+  name: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: string
+  children?: NavigationItem[]
+  description?: string
+  count?: number
+}
+
+const navigation: NavigationItem[] = [
   {
     name: "Dashboard",
     href: "/admin/dashboard",
     icon: LayoutDashboard,
+    description: "Panel principal con métricas y estadísticas",
   },
   {
-    name: "Usuarios",
+    name: "Gestión de Usuarios",
     href: "/admin/usuarios",
     icon: Users,
+    description: "Administración de usuarios del sistema",
+    children: [
+      {
+        name: "Lista de Usuarios",
+        href: "/admin/usuarios",
+        icon: Users,
+        description: "Ver todos los usuarios registrados",
+      },
+      {
+        name: "Crear Usuario",
+        href: "/admin/usuarios/nuevo",
+        icon: Users,
+        description: "Agregar nuevo usuario al sistema",
+      },
+    ],
   },
   {
     name: "Compañías",
     href: "/admin/companias",
     icon: Building2,
+    description: "Gestión de empresas y organizaciones",
+    children: [
+      {
+        name: "Lista de Compañías",
+        href: "/admin/companias",
+        icon: Building2,
+        description: "Ver todas las compañías registradas",
+      },
+      {
+        name: "Nueva Compañía",
+        href: "/admin/companias/nuevo",
+        icon: Building2,
+        description: "Registrar nueva compañía",
+      },
+    ],
   },
   {
     name: "Concursos",
     href: "/admin/concursos",
     icon: Trophy,
+    description: "Administración de concursos ganaderos",
+    children: [
+      {
+        name: "Lista de Concursos",
+        href: "/admin/concursos",
+        icon: Trophy,
+        description: "Ver todos los concursos",
+      },
+      {
+        name: "Nuevo Concurso",
+        href: "/admin/concursos/nuevo",
+        icon: Trophy,
+        description: "Crear nuevo concurso",
+      },
+      {
+        name: "Categorías",
+        href: "/admin/categorias",
+        icon: Folder,
+        description: "Gestionar categorías de concursos",
+      },
+    ],
+  },
+  {
+    name: "Gestión de Contenido",
+    href: "/admin/programacion",
+    icon: ImageIcon,
+    description: "Sistema de gestión de contenido (CMS)",
+    children: [
+      {
+        name: "Programación",
+        href: "/admin/programacion",
+        icon: Calendar,
+        description: "Gestionar imágenes y eventos de programación",
+      },
+      {
+        name: "Medios",
+        href: "/admin/medios",
+        icon: ImageIcon,
+        description: "Biblioteca de archivos multimedia",
+      },
+    ],
   },
   {
     name: "Suscripciones",
     href: "/admin/suscripciones",
     icon: CreditCard,
+    description: "Gestión de planes y pagos",
+    children: [
+      {
+        name: "Lista de Suscripciones",
+        href: "/admin/suscripciones",
+        icon: CreditCard,
+        description: "Ver todas las suscripciones activas",
+      },
+      {
+        name: "Reportes de Pago",
+        href: "/admin/reportes-pago",
+        icon: BarChart3,
+        description: "Análisis de ingresos y pagos",
+      },
+    ],
   },
   {
-    name: "Solicitudes de Compañía",
+    name: "Solicitudes",
     href: "/admin/solicitudes-compania",
     icon: FileText,
     badge: "pending-requests",
+    description: "Solicitudes pendientes de aprobación",
+  },
+  {
+    name: "Sistema",
+    href: "/admin/sistema",
+    icon: Settings,
+    description: "Configuración y herramientas del sistema",
+    children: [
+      {
+        name: "Base de Datos",
+        href: "/admin/sistema/database",
+        icon: Database,
+        description: "Herramientas de base de datos",
+      },
+      {
+        name: "Configuración",
+        href: "/admin/sistema/config",
+        icon: Settings,
+        description: "Configuración general del sistema",
+      },
+      {
+        name: "Logs del Sistema",
+        href: "/admin/sistema/logs",
+        icon: FileText,
+        description: "Registros y auditoría del sistema",
+      },
+    ],
   },
 ]
 
@@ -87,6 +220,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [pendingRequests, setPendingRequests] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const checkAuth = useCallback(async () => {
     try {
@@ -114,12 +248,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const response = await fetch("/api/admin/company-requests")
       if (response.ok) {
         const requests = await response.json()
-        // Verificar que requests es un array antes de usar filter
         if (Array.isArray(requests)) {
           const pending = requests.filter((r: any) => r.status === "PENDIENTE").length
           setPendingRequests(pending)
         } else {
-          console.warn("Company requests response is not an array:", requests)
           setPendingRequests(0)
         }
       }
@@ -134,15 +266,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const response = await fetch("/api/admin/notifications")
       if (response.ok) {
         const data = await response.json()
-        // The API returns { notifications: [...], unreadCount: number }
         setNotifications(Array.isArray(data.notifications) ? data.notifications : [])
       } else {
-        console.error("Failed to fetch notifications")
-        setNotifications([]) // Ensure it's always an array
+        setNotifications([])
       }
     } catch (error) {
       console.error("Error fetching notifications:", error)
-      setNotifications([]) // Ensure it's always an array
+      setNotifications([])
     }
   }, [])
 
@@ -169,17 +299,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   useEffect(() => {
-    // Solo ejecutar una vez al montar el componente
     checkAuth()
     fetchPendingRequests()
     fetchNotifications()
 
-    // Recuperar estado del sidebar del localStorage
     const savedCollapsed = localStorage.getItem("sidebar-collapsed")
     if (savedCollapsed) {
       setIsCollapsed(JSON.parse(savedCollapsed))
     }
-  }, [checkAuth, fetchPendingRequests, fetchNotifications])
+
+    // Auto-expand current section
+    const currentSection = navigation.find(
+      (item) => item.href === pathname || (item.children && item.children.some((child) => child.href === pathname)),
+    )
+    if (currentSection && currentSection.children) {
+      setExpandedItems((prev) => new Set([...prev, currentSection.name]))
+    }
+  }, [checkAuth, fetchPendingRequests, fetchNotifications, pathname])
 
   const handleLogout = async () => {
     try {
@@ -200,6 +336,100 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setIsSidebarOpen(false)
   }
 
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(itemName)) {
+        newSet.delete(itemName)
+      } else {
+        newSet.add(itemName)
+      }
+      return newSet
+    })
+  }
+
+  const isItemActive = (item: NavigationItem): boolean => {
+    if (item.href === pathname) return true
+    if (item.children) {
+      return item.children.some((child) => child.href === pathname)
+    }
+    return false
+  }
+
+  const renderNavigationItem = (item: NavigationItem, level = 0) => {
+    const isActive = isItemActive(item)
+    const isExpanded = expandedItems.has(item.name)
+    const hasChildren = item.children && item.children.length > 0
+    const showBadge = item.badge === "pending-requests" && pendingRequests > 0
+
+    return (
+      <div key={item.name} className={cn("relative", level > 0 && "ml-4")}>
+        {hasChildren && !isCollapsed ? (
+          <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(item.name)}>
+            <CollapsibleTrigger asChild>
+              <div
+                className={cn(
+                  "group flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer",
+                  isActive ? "bg-primary text-white shadow-sm" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                )}
+                title={isCollapsed ? item.name : undefined}
+              >
+                <div className="flex items-center">
+                  <item.icon className="flex-shrink-0 h-5 w-5 mr-3" />
+                  <div className="flex flex-col items-start">
+                    <span className="truncate">{item.name}</span>
+                    {item.description && !isCollapsed && (
+                      <span className="text-xs opacity-75 truncate">{item.description}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {showBadge && (
+                    <Badge variant="destructive" className="text-xs">
+                      {pendingRequests}
+                    </Badge>
+                  )}
+                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {item.children?.map((child) => renderNavigationItem(child, level + 1))}
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <Link
+            href={item.href}
+            className={cn(
+              "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200",
+              isActive ? "bg-primary text-white shadow-sm" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+              isCollapsed ? "justify-center" : "justify-start",
+            )}
+            onClick={closeMobileSidebar}
+            title={isCollapsed ? item.name : undefined}
+          >
+            <item.icon className={cn("flex-shrink-0 h-5 w-5", isCollapsed ? "" : "mr-3")} />
+
+            {!isCollapsed && (
+              <div className="flex flex-col items-start flex-1">
+                <span className="truncate">{item.name}</span>
+                {item.description && <span className="text-xs opacity-75 truncate">{item.description}</span>}
+              </div>
+            )}
+
+            {!isCollapsed && showBadge && (
+              <Badge variant="destructive" className="ml-2 text-xs">
+                {pendingRequests}
+              </Badge>
+            )}
+
+            {isCollapsed && showBadge && <div className="absolute left-8 top-1 w-3 h-3 bg-red-500 rounded-full"></div>}
+          </Link>
+        )}
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -212,8 +442,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return null
   }
 
-  const sidebarWidth = isCollapsed ? "w-16" : "w-64"
-  const mainMargin = isCollapsed ? "lg:ml-16" : "lg:ml-64"
+  const sidebarWidth = isCollapsed ? "w-16" : "w-80"
+  const mainMargin = isCollapsed ? "lg:ml-16" : "lg:ml-80"
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.isRead).length
 
@@ -228,10 +458,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-white shadow-lg transition-all duration-300 ease-in-out",
-          // Mobile
           "transform lg:transform-none",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
-          // Desktop
           "lg:translate-x-0",
           sidebarWidth,
         )}
@@ -244,12 +472,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {!isCollapsed && <span className="text-xl font-bold whitespace-nowrap">Admin Panel</span>}
             </div>
 
-            {/* Mobile close button */}
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={closeMobileSidebar}>
               <X className="h-5 w-5" />
             </Button>
 
-            {/* Desktop collapse button */}
             <Button variant="ghost" size="sm" className="hidden lg:flex" onClick={toggleCollapse}>
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>
@@ -288,43 +514,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1 bg-white overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              const showBadge = item.badge === "pending-requests" && pendingRequests > 0
-
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200",
-                    isActive
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                    isCollapsed ? "justify-center" : "justify-start",
-                  )}
-                  onClick={closeMobileSidebar}
-                  title={isCollapsed ? item.name : undefined}
-                >
-                  <item.icon className={cn("flex-shrink-0 h-5 w-5", isCollapsed ? "" : "mr-3")} />
-
-                  {!isCollapsed && (
-                    <>
-                      <span className="flex-1 truncate">{item.name}</span>
-                      {showBadge && (
-                        <Badge variant="destructive" className="ml-2 text-xs">
-                          {pendingRequests}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-
-                  {isCollapsed && showBadge && (
-                    <div className="absolute left-8 top-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                  )}
-                </Link>
-              )
-            })}
+            {navigation.map((item) => renderNavigationItem(item))}
           </nav>
 
           {/* Footer */}

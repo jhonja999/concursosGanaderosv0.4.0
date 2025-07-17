@@ -34,7 +34,7 @@ export async function GET() {
           nombre: contest.nombre,
           slug: contest.slug,
           descripcion: contest.descripcion,
-          imagenPrincipal: contest.imagenPrincipal, // This should be the main contest image
+          imagenPrincipal: contest.imagenPrincipal,
           fechaInicio: contest.fechaInicio.toISOString(),
           fechaFin: contest.fechaFin?.toISOString(),
           fechaInicioRegistro: contest.fechaInicioRegistro?.toISOString(),
@@ -56,6 +56,13 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Error fetching contests:", error)
-    return NextResponse.json({ success: false, message: "Error al obtener concursos" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error al obtener concursos",
+        contests: [],
+      },
+      { status: 500 },
+    )
   }
 }

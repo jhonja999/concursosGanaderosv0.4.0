@@ -16,18 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 // Add CalendarDays to the lucide-react import
-import {
-  ArrowLeft,
-  Save,
-  Trophy,
-  CalendarIcon,
-  MapPin,
-  DollarSign,
-  Plus,
-  X,
-  Building2,
-  CalendarDays,
-} from "lucide-react"
+import { Save, Trophy, CalendarIcon, MapPin, DollarSign, Plus, X, Building2, CalendarDays } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -35,6 +24,7 @@ import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
 
 interface ConcursoFormData {
   nombre: string
@@ -98,6 +88,7 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
     permitirRegistroTardio: false,
     companyId: "",
   })
+  const [contestName, setContestName] = useState<string>("") // State to hold contest name for breadcrumbs
 
   useEffect(() => {
     fetchContest()
@@ -110,6 +101,7 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
       if (response.ok) {
         const data = await response.json()
         const contest = data.contest
+        setContestName(contest.nombre || "Concurso") // Set contest name
 
         setFormData({
           nombre: contest.nombre || "",
@@ -265,19 +257,16 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/admin/concursos">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Editar Concurso</h1>
-          <p className="text-muted-foreground">Modificar información del concurso</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Editar Concurso"
+        description="Modificar información del concurso"
+        breadcrumbItems={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Concursos", href: "/admin/concursos" },
+          { label: contestName, href: `/admin/concursos/${resolvedParams.id}` },
+          { label: "Editar" },
+        ]}
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -817,16 +806,16 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
                       </>
                     )}
                   </Button>
-                  <Button type="button" variant="outline" asChild className="w-full">
+                  <Button type="button" variant="outline" asChild className="w-full bg-transparent">
                     <Link href="/admin/concursos">Cancelar</Link>
                   </Button>
-                  <Button type="button" variant="outline" asChild className="w-full">
+                  <Button type="button" variant="outline" asChild className="w-full bg-transparent">
                     <Link href={`/admin/concursos/${resolvedParams.id}/auspiciadores`}>
                       <Building2 className="h-4 w-4 mr-2" />
                       Gestionar Auspiciadores
                     </Link>
                   </Button>
-                  <Button type="button" variant="outline" asChild className="w-full">
+                  <Button type="button" variant="outline" asChild className="w-full bg-transparent">
                     <Link href={`/admin/concursos/${resolvedParams.id}/eventos`}>
                       <CalendarDays className="h-4 w-4 mr-2" />
                       Gestionar Agenda

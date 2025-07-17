@@ -15,14 +15,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Plus, Edit, Trash2, CalendarDays } from "lucide-react"
-import Link from "next/link"
+import { Plus, Edit, Trash2, CalendarDays } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { EventForm } from "@/components/admin/event-form"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
+import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
 
 interface Event {
   id: string
@@ -41,10 +41,25 @@ export default function GestionarEventosPage({ params }: { params: Promise<{ id:
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const [contestName, setContestName] = useState<string>("") // State to hold contest name for breadcrumbs
 
   useEffect(() => {
+    fetchContestName()
     fetchEvents()
   }, [contestId])
+
+  const fetchContestName = async () => {
+    try {
+      const response = await fetch(`/api/admin/concursos/${contestId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setContestName(data.contest?.nombre || "Concurso")
+      }
+    } catch (error) {
+      console.error("Error fetching contest name:", error)
+      setContestName("Concurso")
+    }
+  }
 
   const fetchEvents = async () => {
     setIsLoading(true)
@@ -96,18 +111,36 @@ export default function GestionarEventosPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/concursos/${contestId}/editar`}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al Concurso
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Gestionar Agenda del Concurso</h1>
-          <p className="text-muted-foreground">Añade, edita o elimina eventos del cronograma.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Gestionar Agenda del Concurso"
+        description="Añade, edita o elimina eventos del cronograma."
+        breadcrumbItems={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Concursos", href: "/admin/concursos" },
+          { label: contestName, href: `/admin/concursos/${contestId}` },
+          { label: "Agenda" },
+        ]}
+      >
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(isOpen) => {
+            setIsDialogOpen(isOpen)
+            if (!isOpen) setEditingEvent(null)
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Añadir Evento
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>{editingEvent ? "Editar Evento" : "Añadir Nuevo Evento"}</DialogTitle>
+            </DialogHeader>
+            <EventForm contestId={contestId} initialData={editingEvent} onSubmitSuccess={handleFormSubmit} />
+          </DialogContent>
+        </Dialog>
+      </PageHeader>
 
       <Card>
         <CardHeader>

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,13 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ArrowLeft, Save, Trophy, CalendarIcon, MapPin, DollarSign, Plus, X } from "lucide-react"
+import { Save, Trophy, CalendarIcon, MapPin, DollarSign, Plus, X } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
 
 interface ConcursoFormData {
   nombre: string
@@ -45,14 +45,15 @@ interface ConcursoFormData {
   requisitoEspeciales: string
   isPublic: boolean
   isActive: boolean
-  permitirRegistroTardio: boolean
   isFeatured: boolean
+  permitirRegistroTardio: boolean
   companyId: string
 }
 
 export default function NuevoConcursoPage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [companies, setCompanies] = useState<Array<{ id: string; nombre: string }>>([])
   const [newCategory, setNewCategory] = useState("")
   const [formData, setFormData] = useState<ConcursoFormData>({
     nombre: "",
@@ -77,12 +78,10 @@ export default function NuevoConcursoPage() {
     requisitoEspeciales: "",
     isPublic: false,
     isActive: false,
-    permitirRegistroTardio: false,
     isFeatured: false,
+    permitirRegistroTardio: false,
     companyId: "",
   })
-
-  const [companies, setCompanies] = useState<Array<{ id: string; nombre: string }>>([])
 
   useEffect(() => {
     fetchCompanies()
@@ -97,6 +96,7 @@ export default function NuevoConcursoPage() {
       }
     } catch (error) {
       console.error("Error fetching companies:", error)
+      toast.error("Error al cargar las compañías.")
     }
   }
 
@@ -158,7 +158,7 @@ export default function NuevoConcursoPage() {
       return
     }
 
-    setIsLoading(true)
+    setIsSaving(true)
 
     try {
       const response = await fetch("/api/admin/concursos", {
@@ -177,7 +177,6 @@ export default function NuevoConcursoPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
         toast.success("Concurso creado exitosamente")
         router.push("/admin/concursos")
       } else {
@@ -188,25 +187,21 @@ export default function NuevoConcursoPage() {
       console.error("Error creating contest:", error)
       toast.error("Error al crear el concurso")
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/admin/concursos">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Nuevo Concurso</h1>
-          <p className="text-muted-foreground">Crear un nuevo concurso ganadero</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Nuevo Concurso"
+        description="Crea un nuevo concurso ganadero."
+        breadcrumbItems={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Concursos", href: "/admin/concursos" },
+          { label: "Nuevo" },
+        ]}
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -244,6 +239,7 @@ export default function NuevoConcursoPage() {
                       onChange={(e) => handleInputChange("slug", e.target.value)}
                       placeholder="slug-del-concurso"
                     />
+                    <p className="text-xs text-muted-foreground">URL pública: localhost:3000/{formData.slug}</p>
                   </div>
                 </div>
 
@@ -264,7 +260,10 @@ export default function NuevoConcursoPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="tipoConcurso">Tipo de Concurso</Label>
-                    <Select onValueChange={(value) => handleInputChange("tipoConcurso", value)}>
+                    <Select
+                      value={formData.tipoConcurso}
+                      onValueChange={(value) => handleInputChange("tipoConcurso", value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar tipo" />
                       </SelectTrigger>
@@ -494,22 +493,22 @@ export default function NuevoConcursoPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="ubicacion">Ubicación (Opcional)</Label>
+                  <Label htmlFor="ubicacion">Ubicación</Label>
                   <Input
                     id="ubicacion"
                     value={formData.ubicacion}
                     onChange={(e) => handleInputChange("ubicacion", e.target.value)}
-                    placeholder="Ciudad, Departamento (opcional)"
+                    placeholder="Ciudad, Departamento"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="direccion">Dirección Completa (Opcional)</Label>
+                  <Label htmlFor="direccion">Dirección Completa</Label>
                   <Textarea
                     id="direccion"
                     value={formData.direccion}
                     onChange={(e) => handleInputChange("direccion", e.target.value)}
-                    placeholder="Dirección detallada del evento (opcional)"
+                    placeholder="Dirección detallada del evento"
                     rows={2}
                   />
                 </div>
@@ -595,6 +594,7 @@ export default function NuevoConcursoPage() {
                   onChange={(url) => handleInputChange("imagenPrincipal", url)}
                   folder="concursos"
                   entityType="contest"
+                  entityId="new" // For new contest, ID is not yet available
                   label="Imagen Principal"
                   description="Imagen representativa del concurso (máx. 10MB)"
                 />
@@ -609,10 +609,8 @@ export default function NuevoConcursoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Label htmlFor="companyId">
-                    Compañía <span className="text-red-500">*</span>
-                  </Label>
-                  <Select onValueChange={(value) => handleInputChange("companyId", value)} required>
+                  <Label htmlFor="companyId">Compañía</Label>
+                  <Select value={formData.companyId} onValueChange={(value) => handleInputChange("companyId", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione una compañía" />
                     </SelectTrigger>
@@ -665,20 +663,6 @@ export default function NuevoConcursoPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="permitirRegistroTardio">Registro Tardío</Label>
-                    <p className="text-xs text-muted-foreground">Permitir después de la fecha límite</p>
-                  </div>
-                  <Switch
-                    id="permitirRegistroTardio"
-                    checked={formData.permitirRegistroTardio}
-                    onCheckedChange={(checked) => handleInputChange("permitirRegistroTardio", checked)}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
                     <Label htmlFor="isFeatured">Destacado</Label>
                     <p className="text-xs text-muted-foreground">Mostrar en secciones especiales</p>
                   </div>
@@ -686,6 +670,20 @@ export default function NuevoConcursoPage() {
                     id="isFeatured"
                     checked={formData.isFeatured}
                     onCheckedChange={(checked) => handleInputChange("isFeatured", checked)}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="permitirRegistroTardio">Registro Tardío</Label>
+                    <p className="text-xs text-muted-foreground">Permitir después de la fecha límite</p>
+                  </div>
+                  <Switch
+                    id="permitirRegistroTardio"
+                    checked={formData.permitirRegistroTardio}
+                    onCheckedChange={(checked) => handleInputChange("permitirRegistroTardio", checked)}
                   />
                 </div>
               </CardContent>
@@ -702,24 +700,24 @@ export default function NuevoConcursoPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cuotaInscripcion">Cuota de Inscripción (Opcional)</Label>
+                  <Label htmlFor="cuotaInscripcion">Cuota de Inscripción</Label>
                   <Input
                     id="cuotaInscripcion"
                     type="number"
                     min="0"
                     value={formData.cuotaInscripcion || ""}
                     onChange={(e) => handleInputChange("cuotaInscripcion", Number.parseInt(e.target.value) || 0)}
-                    placeholder="0 (opcional)"
+                    placeholder="0"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="premiacion">Premiación (Opcional)</Label>
+                  <Label htmlFor="premiacion">Premiación</Label>
                   <Textarea
                     id="premiacion"
                     value={formData.premiacion}
                     onChange={(e) => handleInputChange("premiacion", e.target.value)}
-                    placeholder="Descripción de premios (opcional)"
+                    placeholder="Descripción de premios"
                     rows={3}
                   />
                 </div>
@@ -730,11 +728,11 @@ export default function NuevoConcursoPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col gap-2">
-                  <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? (
+                  <Button type="submit" disabled={isSaving} className="w-full">
+                    {isSaving ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Creando...
+                        Guardando...
                       </>
                     ) : (
                       <>
@@ -743,7 +741,7 @@ export default function NuevoConcursoPage() {
                       </>
                     )}
                   </Button>
-                  <Button type="button" variant="outline" asChild className="w-full">
+                  <Button type="button" variant="outline" asChild className="w-full bg-transparent">
                     <Link href="/admin/concursos">Cancelar</Link>
                   </Button>
                 </div>

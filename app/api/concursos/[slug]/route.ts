@@ -2,13 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
-  const { slug } = await context.params // Await params before accessing properties
-
-  if (!slug) {
-    return NextResponse.json({ message: "Slug no proporcionado" }, { status: 400 })
-  }
-
   try {
+    const { slug } = await context.params
+
+    if (!slug) {
+      return NextResponse.json({ message: "Slug no proporcionado" }, { status: 400 })
+    }
+
     const contest = await prisma.contest.findUnique({
       where: { slug: slug },
       include: {
@@ -34,9 +34,22 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       return NextResponse.json({ message: "Concurso no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json({ contest })
+    // Get participant count separately
+    const participantCount = await prisma.ganado.count({
+      where: {
+        contestId: contest.id,
+      },
+    })
+
+    // Add participant count to the response
+    const contestWithCount = {
+      ...contest,
+      participantCount,
+    }
+
+    return NextResponse.json({ contest: contestWithCount })
   } catch (error) {
-    console.error(`Error fetching contest by slug ${slug}:`, error)
-    return NextResponse.json({ message: "Error al obtener el concurso" }, { status: 500 })
+    console.error(`Error fetching contest by slug:`, error)
+    return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
   }
 }

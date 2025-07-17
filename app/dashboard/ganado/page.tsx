@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { GanadoList } from "@/components/ganado/ganado-list"
-import { GanadoForm } from "@/components/ganado/ganado-contest-form"
+import { GanadoContestForm } from "@/components/ganado/ganado-contest-form" // Corrected import
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
@@ -109,11 +109,11 @@ export default function GanadoPage() {
       {!showForm ? (
         <GanadoList onAdd={handleAdd} onEdit={handleEdit} onView={handleView} onDelete={handleDelete} />
       ) : (
-        <GanadoForm
+        <GanadoContestForm // Corrected component name
           contestId="default" // For dashboard, we'll use a default contest or make it optional
           initialData={editingGanado}
           onSubmit={handleSubmit}
-          onCancel={handleCancel}
+          onSubmitSuccess={handleCancel} // Using handleCancel as onSubmitSuccess
           isLoading={isLoading}
         />
       )}

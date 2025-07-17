@@ -163,11 +163,17 @@ interface GanadoFormProps {
   contestId: string
   initialData?: any
   onSubmit: (data: GanadoFormData) => Promise<void>
-  onCancel: () => void
+  onSubmitSuccess: () => void // Added onSubmitSuccess prop
   isLoading?: boolean
 }
 
-export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoading = false }: GanadoFormProps) {
+export function GanadoContestForm({
+  contestId,
+  initialData,
+  onSubmit,
+  onSubmitSuccess,
+  isLoading = false,
+}: GanadoFormProps) {
   const [categories, setCategories] = useState<any[]>([])
   const [establos, setEstablos] = useState<any[]>([])
   const [contest, setContest] = useState<any>(null)
@@ -445,6 +451,7 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
     try {
       await onSubmit(formData)
       setHasUnsavedChanges(false) // Reset flag after successful save
+      onSubmitSuccess() // Call onSubmitSuccess after successful submission
     } catch (error) {
       console.error("Error submitting form:", error)
     } finally {
@@ -1328,7 +1335,9 @@ export function GanadoForm({ contestId, initialData, onSubmit, onCancel, isLoadi
 
       {/* Botones de acción */}
       <div className="flex justify-end space-x-4 pt-6 border-t">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onSubmitSuccess}>
+          {" "}
+          {/* Changed onCancel to onSubmitSuccess */}
           Cancelar
         </Button>
         <Button

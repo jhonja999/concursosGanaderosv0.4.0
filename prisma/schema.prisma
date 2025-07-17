@@ -137,6 +137,7 @@ companiesCreated        Company[]            @relation("CompanyCreator")
 uploadedMedia           Media[]
 contestsCreated         Contest[]            @relation("ContestCreator")
 ganadoCreado            Ganado[]             @relation("GanadoCreator")
+programImages           ProgramImage[]       @relation("ProgramImageUploader")
 
 
 @@index([email])
@@ -618,6 +619,37 @@ updatedAt   DateTime @updatedAt
 @@index([folder])
 @@index([createdAt])
 @@map("media")
+}
+
+// =========================================================================
+// MODELO DE IMÁGENES DE PROGRAMACIÓN (NUEVO)
+// =========================================================================
+model ProgramImage {
+  id          String   @id @default(cuid())
+  title       String   // Título de la imagen/evento
+  description String?  @db.Text // Descripción detallada del evento
+  imageUrl    String   // URL de Cloudinary
+  publicId    String   @unique // Public ID de Cloudinary
+  order       Int      @default(0) // Orden de visualización
+  isActive    Boolean  @default(true)
+  
+  // Información del evento
+  eventDate   DateTime? // Fecha del evento (opcional)
+  eventTime   String?   // Hora del evento
+  location    String?   // Ubicación del evento
+  
+  // Usuario que subió la imagen
+  uploadedById String?
+  uploadedBy   User?    @relation("ProgramImageUploader", fields: [uploadedById], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+  @@index([eventDate])
+  @@index([uploadedById])
+  @@map("program_images")
 }
 
 // =========================================================================

@@ -25,6 +25,7 @@ import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { useRouter } from "next/navigation"
+import { Breadcrumbs } from "@/components/shared/breadcrumbs" // Import Breadcrumbs
 
 interface Contest {
   id: string
@@ -157,6 +158,7 @@ export default function ConcursosPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Concursos" }]} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
