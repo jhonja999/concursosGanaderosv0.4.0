@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 import {
   LayoutDashboard,
   Users,
@@ -465,12 +466,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
+          {/* Header - Now clickable */}
           <div className="flex items-center justify-between h-16 px-4 border-b bg-white">
-            <div className="flex items-center space-x-2 overflow-hidden">
+            <Link 
+              href="/admin" 
+              className="flex items-center space-x-2 overflow-hidden hover:opacity-80 transition-opacity"
+            >
               <Building2 className="h-8 w-8 text-primary flex-shrink-0" />
               {!isCollapsed && <span className="text-xl font-bold whitespace-nowrap">Admin Panel</span>}
-            </div>
+            </Link>
 
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={closeMobileSidebar}>
               <X className="h-5 w-5" />
@@ -545,40 +549,66 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
 
             <div className="flex items-center space-x-4">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
+              {/* Notifications */}
               <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <div className="relative">
-                      <Bell className="h-5 w-5" />
-                      {unreadNotificationsCount > 0 && (
-                        <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
-                          {unreadNotificationsCount}
-                        </div>
-                      )}
-                    </div>
+                  <Button variant="ghost" size="sm" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadNotificationsCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-xs"
+                      >
+                        {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                      </Badge>
+                    )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right">
+                <SheetContent side="right" className="w-80">
                   <SheetHeader>
-                    <SheetTitle>Notifications</SheetTitle>
+                    <SheetTitle>Notificaciones</SheetTitle>
                   </SheetHeader>
-                  <div className="divide-y divide-gray-200">
+                  <div className="mt-4 space-y-4">
                     {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <div key={notification.id} className="py-4">
-                          <p className="text-sm">{notification.message}</p>
-                          <p className="text-xs text-gray-500">{notification.createdAt.toString()}</p>
+                      <>
+                        <div className="divide-y divide-gray-200">
+                          {notifications.slice(0, 10).map((notification) => (
+                            <div key={notification.id} className="py-3 first:pt-0 last:pb-0">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-sm text-gray-500 truncate">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {new Date(notification.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                                {!notification.isRead && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-2"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))
+                        {unreadNotificationsCount > 0 && (
+                          <Button onClick={markAllAsRead} className="w-full" variant="outline">
+                            Marcar todas como leídas
+                          </Button>
+                        )}
+                      </>
                     ) : (
-                      <p className="text-sm text-gray-500">No notifications</p>
+                      <div className="text-center py-8">
+                        <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500">No hay notificaciones</p>
+                      </div>
                     )}
                   </div>
-                  {notifications.filter((notification) => !notification.isRead).length > 0 && (
-                    <Button onClick={markAllAsRead} className="mt-4">
-                      Mark all as read
-                    </Button>
-                  )}
                 </SheetContent>
               </Sheet>
             </div>

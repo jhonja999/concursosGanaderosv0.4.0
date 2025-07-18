@@ -1,16 +1,21 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-import { SiteFooter } from "@/components/shared/site-footer"
+import { Toaster } from "@/components/ui/sonner"
+import { cn } from "@/lib/utils"
 import { HomeNavbar } from "@/components/shared/HomeNavbar"
+import { SiteFooter } from "@/components/shared/site-footer"
+import { headers } from "next/headers"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Lo Mejor de Mi Tierra - Concursos Ganaderos Cajamarca",
+  title: "Lo Mejor de Mi Tierra - Concursos Ganaderos",
   description:
-    "Plataforma para la gestión de concursos ganaderos en Cajamarca, Perú. Registro de participantes, resultados y eventos ganaderos.",
-  keywords: "concursos, ganadería, ganado, bovinos, equinos, porcinos, caprinos, ovinos, fongal, cajamarca, perú",
+    "Plataforma líder para concursos ganaderos en Cajamarca. Reconocemos tu dedicación y pasión por tus animales.",
+  keywords: "concursos ganaderos, ganado, Cajamarca, agricultura, ganadería, concursos, animales",
   authors: [{ name: "Lo Mejor de Mi Tierra" }],
   creator: "Lo Mejor de Mi Tierra",
   publisher: "Lo Mejor de Mi Tierra",
@@ -20,10 +25,13 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Lo Mejor de Mi Tierra - Concursos Ganaderos Cajamarca",
+    title: "Lo Mejor de Mi Tierra - Concursos Ganaderos",
     description:
-      "Los mejores concursos ganaderos de Cajamarca, Perú. Participa y conoce a los mejores criadores de la región.",
+      "Plataforma líder para concursos ganaderos en Cajamarca. Reconocemos tu dedicación y pasión por tus animales.",
     url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     siteName: "Lo Mejor de Mi Tierra",
     locale: "es_PE",
@@ -31,8 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lo Mejor de Mi Tierra - Concursos Ganaderos Cajamarca",
-    description: "Los mejores concursos ganaderos de Cajamarca, Perú",
+    title: "Lo Mejor de Mi Tierra - Concursos Ganaderos",
+    description:
+      "Plataforma líder para concursos ganaderos en Cajamarca. Reconocemos tu dedicación y pasión por tus animales.",
   },
   robots: {
     index: true,
@@ -46,36 +55,59 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION,
+    google: "your-google-verification-code",
   },
-  generator: "v0.dev",
 }
 
-export default function RootLayout({
+async function getUserSession() {
+  try {
+    const headersList = await headers()
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/me`, {
+      headers: {
+        Cookie: headersList.get("cookie") || "",
+      },
+      cache: "no-store",
+    })
+
+    if (response.ok) {
+      return await response.json()
+    }
+  } catch (error) {
+    console.error("Error fetching user session:", error)
+  }
+  return null
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const headersList = await headers()
+  const pathname = headersList.get("x-pathname") || ""
+  const isAdminRoute = pathname.startsWith("/admin")
+
+  // Get user session for navbar
+  const user = await getUserSession()
+
   return (
     <html lang="es" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body className="font-nunito antialiased min-h-screen bg-gray-50 dark:bg-gray-900">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={true}
-          disableTransitionOnChange={false}
-          storageKey="lomejordemitierra-theme"
-        >
-          <div className="relative flex min-h-screen flex-col bg-background">
-            <HomeNavbar />
-            <main className="flex-1 bg-background">{children}</main>
-            <SiteFooter />
-          </div>
-          <Toaster />
+      <body className={cn(inter.className, "min-h-screen bg-background font-sans antialiased")}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {!isAdminRoute && <HomeNavbar user={user} />}
+          {children}
+          {!isAdminRoute && <SiteFooter />}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "hsl(var(--background))",
+                color: "hsl(var(--foreground))",
+                border: "1px solid hsl(var(--border))",
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

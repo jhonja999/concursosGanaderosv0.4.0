@@ -1,7 +1,7 @@
 import type React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Check, Star, Users, Trophy, BarChart3, MilkIcon as Cow, Calendar, Building, Tag } from "lucide-react"
+import { Check, Star, Users, Trophy, BarChart3, Calendar, Building } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,11 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { prisma } from "@/lib/prisma"
 import AnimalSlider from "@/components/AnimalSlider"
 import { headers } from "next/headers" // Import headers for server-side cookie access
+import "swiper/css"
+import "swiper/css/navigation"
+import "swiper/css/pagination"
+import "swiper/css/scrollbar"
+import GanadoSlider from "@/components/ganado/GanadoSlider"
 
 // Componente para manejar imágenes con error handling
 function ImageWithFallback({
@@ -263,86 +268,7 @@ export default async function HomePage() {
       </section>
 
       {/* Ganado Destacado */}
-      <section className="w-full py-12 md:py-16 lg:py-24 bg-muted dark:bg-gray-800 text-center">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-4 mb-8 md:mb-12">
-            <div className="space-y-2 max-w-3xl mx-auto">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-gray-800 dark:text-gray-100">
-                Ganado Destacado
-              </h2>
-              <p className="mx-auto text-muted-foreground dark:text-gray-300 text-base md:text-lg lg:text-xl max-w-2xl">
-                Conoce los ejemplares más destacados de nuestros concursos.
-              </p>
-            </div>
-          </div>
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {ganado.length > 0 ? (
-              ganado.map((animal) => (
-                <Link key={animal.id} href={`/ganado/${animal.id}`} className="group">
-                  <Card className="flex flex-col h-full rounded-xl border bg-card dark:bg-secondary text-card-foreground shadow transition-all duration-300 hover:shadow-lg hover:scale-105 group-hover:border-emerald-500/50">
-                    {animal.imagenUrl ? (
-                      <div className="relative aspect-square overflow-hidden rounded-t-xl">
-                        <ImageWithFallback
-                          src={animal.imagenUrl || "/placeholder.svg?height=400&width=400"}
-                          alt={animal.nombre}
-                          className="rounded-t-xl object-cover transition-transform duration-300 group-hover:scale-110"
-                          fill={true}
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                          fallbackContent={<Cow className="h-16 w-16 text-white opacity-80" />}
-                        />
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-emerald-600 text-white shadow-md">Destacado</Badge>
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-                    ) : (
-                      <div className="aspect-square bg-gradient-to-br from-emerald-500 to-blue-600 rounded-t-xl flex items-center justify-center">
-                        <Cow className="h-16 w-16 text-white opacity-80" />
-                      </div>
-                    )}
-                    <CardContent className="p-4 md:p-6 flex flex-col space-y-3 md:space-y-4 flex-1">
-                      <div className="space-y-2 text-left">
-                        <h3 className="text-lg md:text-xl font-bold line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                          {animal.nombre}
-                        </h3>
-                      </div>
-                      <div className="mt-auto pt-2 md:pt-4 flex flex-col gap-2 text-left">
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">Ganado</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Cow className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">{animal.raza || "Raza no especificada"}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <div className="max-w-md mx-auto">
-                  <Cow className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-400 mb-2">No hay ganado destacado</h3>
-                  <p className="text-gray-500">Próximamente tendremos nuevos ejemplares destacados</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex justify-center mt-8 md:mt-12">
-            <Link href="/dashboard/ganado">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white bg-transparent transition-all duration-300 hover:scale-105"
-              >
-                Ver todo el ganado
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <GanadoSlider ganado={ganado} />
 
       {/* Subscription Plans Section */}
       <section className="w-full py-12 md:py-16 lg:py-24 bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background">

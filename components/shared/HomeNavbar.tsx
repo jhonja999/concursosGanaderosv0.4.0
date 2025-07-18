@@ -58,11 +58,20 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState(0)
+  const [isScrolled, setIsScrolled] = useState(false)
 
   useEffect(() => {
     if (user) {
       fetchNotifications()
     }
+
+    // Handle scroll for navbar compression
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [user])
 
   const fetchNotifications = async () => {
@@ -103,14 +112,25 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 supports-[backdrop-filter]:bg-background/80 shadow-sm">        
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full border-b bg-background/95 supports-[backdrop-filter]:bg-background/80 shadow-sm transition-all duration-300",
+        isScrolled && "shadow-md",
+      )}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 sm:h-20 items-center justify-between">
-           <div className="flex items-center">
-            <Logo className="text-green-700" size="md" href="/" />
+        <div
+          className={cn(
+            "flex items-center justify-between transition-all duration-300",
+            isScrolled ? "h-14" : "h-16 sm:h-20",
+          )}
+        >
+          <div className="flex items-center">
+            <Logo className="text-green-700" size={isScrolled ? "sm" : "md"} href="/" />
           </div>
+
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-4 lg:space-x-6">
+          <nav className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const itemIsActive = isActive(item.href)
@@ -120,32 +140,34 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 text-sm lg:text-base font-semibold transition-all duration-200 hover:text-green-600 dark:hover:text-green-400 px-3 py-2 rounded-lg hover:bg-green-50/80 dark:hover:bg-green-900/30",
-                    itemIsActive 
-                      ? "text-green-600 dark:text-green-400 bg-green-50/80 dark:bg-green-900/50" 
-                      : "text-gray-700 dark:text-gray-300"
+                    "flex items-center gap-2 font-semibold transition-all duration-200 hover:text-green-600 dark:hover:text-green-400 rounded-lg hover:bg-green-50/80 dark:hover:bg-green-900/30",
+                    isScrolled ? "text-xs px-2 py-2" : "text-sm lg:text-base px-3 py-2",
+                    itemIsActive
+                      ? "text-green-600 dark:text-green-400 bg-green-50/80 dark:bg-green-900/50"
+                      : "text-gray-700 dark:text-gray-300",
                   )}
+                  title={isScrolled ? item.label : undefined}
                 >
-                  <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
-                  {item.label}
+                  <Icon className={cn("flex-shrink-0", isScrolled ? "h-4 w-4" : "h-4 w-4 lg:h-5 lg:w-5")} />
+                  {!isScrolled && <span className="hidden lg:inline">{item.label}</span>}
                 </Link>
               )
             })}
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-3">
-            
+          <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
+            {/* Theme Toggle */}
             {user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 lg:space-x-3">
                 {/* Notifications */}
                 <Link href="/dashboard/notificaciones">
-                  <Button variant="ghost" size="sm" className="relative">
-                    <Bell className="h-4 w-4" />
+                  <Button variant="ghost" size={isScrolled ? "sm" : "default"} className="relative">
+                    <Bell className={cn(isScrolled ? "h-4 w-4" : "h-4 w-4")} />
                     {notifications > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-xs"
                       >
                         {notifications > 9 ? "9+" : notifications}
                       </Badge>
@@ -156,8 +178,8 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
+                    <Button variant="ghost" className={cn("relative rounded-full", isScrolled ? "h-7 w-7" : "h-8 w-8")}>
+                      <Avatar className={cn(isScrolled ? "h-7 w-7" : "h-8 w-8")}>
                         <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.nombre} />
                         <AvatarFallback className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                           {user.nombre.charAt(0)}
@@ -176,7 +198,7 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                       </div>
                     </div>
                     <DropdownMenuSeparator />
-                    {user.role === "ADMIN" && (
+                    {user.role === "SUPERADMIN" && (
                       <>
                         <DropdownMenuItem asChild>
                           <Link href="/admin/dashboard" className="flex items-center">
@@ -210,23 +232,24 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
             ) : (
               <div className="flex items-center space-x-2">
                 <Link href="/iniciar-sesion">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size={isScrolled ? "sm" : "default"}>
                     <LogIn className="mr-2 h-4 w-4" />
-                    Iniciar Sesión
+                    {!isScrolled && "Iniciar Sesión"}
                   </Button>
                 </Link>
                 <Link href="/registro">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                  <Button size={isScrolled ? "sm" : "default"} className="bg-green-600 hover:bg-green-700">
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Registrarse
+                    {!isScrolled && "Registrarse"}
                   </Button>
                 </Link>
               </div>
             )}
+            <ThemeToggle />
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center justify-end w-full">            
+          <div className="flex md:hidden items-center justify-end w-full">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -238,7 +261,7 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                   <span className="sr-only">Abrir menú</span>
                 </Button>
               </SheetTrigger>
-              
+
               <SheetContent side="left" className="w-80 p-0">
                 <SheetHeader className="p-6 pb-4 border-b bg-green-50 dark:bg-green-900/30">
                   <div className="flex items-center justify-between">
@@ -318,7 +341,7 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
 
                       {/* User Actions */}
                       <div className="space-y-1">
-                        {user.role === "ADMIN" && (
+                        {user.role === "SUPERADMIN" && (
                           <Link
                             href="/admin/dashboard"
                             className="flex items-center space-x-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"

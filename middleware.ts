@@ -6,6 +6,10 @@ export async function middleware(request: NextRequest) {
   // Make middleware async
   const { pathname } = request.nextUrl
 
+  // Clone the request headers and set the pathname
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-pathname", pathname)
+
   // Rutas públicas que no requieren autenticación
   const publicPaths = [
     "/",
@@ -25,7 +29,11 @@ export async function middleware(request: NextRequest) {
 
   // Verificar si es una ruta pública
   if (publicPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next()
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
   }
 
   // Obtener token de las cookies
@@ -40,7 +48,11 @@ export async function middleware(request: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/iniciar-sesion", request.url))
     }
-    return NextResponse.next()
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
   }
 
   // Verificar token
@@ -81,7 +93,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
 }
 
 export const config = {
