@@ -5,157 +5,151 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Search, Filter, X, RotateCcw } from "lucide-react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface GanadoFiltersProps {
+  filters: {
+    search: string
+    raza: string
+    categoria: string
+    tipoAnimal: string
+    sexo: string
+    estado: string
+    ordenar: string
+  }
   onFiltersChange: (filters: any) => void
-  categories?: Array<{ id: string; nombre: string }>
-  breeds?: string[]
-  animalTypes?: string[]
-  loading?: boolean
+  availableFilters?: {
+    categories: Array<{ id: string; nombre: string }>
+    breeds: string[]
+    animalTypes: string[]
+  }
+  isLoading?: boolean
 }
 
-export function GanadoFilters({
-  onFiltersChange,
-  categories = [],
-  breeds = [],
-  animalTypes = [],
-  loading = false,
-}: GanadoFiltersProps) {
-  const [search, setSearch] = useState("")
-  const [categoria, setCategoria] = useState("all")
-  const [raza, setRaza] = useState("all")
-  const [sexo, setSexo] = useState("all")
-  const [enRemate, setEnRemate] = useState("all")
-  const [sortBy, setSortBy] = useState("createdAt")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-  const [showFilters, setShowFilters] = useState(false)
-  const [tipoAnimal, setTipoAnimal] = useState("all")
-
-  // Opciones de ordenamiento
-  const sortOptions = [
-    { value: "nombre", label: "Nombre" },
-    { value: "raza", label: "Raza" },
-    { value: "puntaje", label: "Puntaje" },
-    { value: "fechaNacimiento", label: "Edad" },
-    { value: "pesoKg", label: "Peso" },
-    { value: "createdAt", label: "Fecha de Registro" },
-  ]
+export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLoading = false }: GanadoFiltersProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [localFilters, setLocalFilters] = useState(filters)
 
   useEffect(() => {
-    const filters = {
-      search: search.trim() || undefined,
-      categoriaId: categoria === "all" ? undefined : categoria,
-      raza: raza === "all" ? undefined : raza,
-      sexo: sexo === "all" ? undefined : sexo,
-      enRemate: enRemate === "all" ? undefined : enRemate,
-      sortBy: sortBy === "none" ? undefined : sortBy,
-      sortOrder: sortBy === "none" ? undefined : sortOrder,
-      tipoAnimal: tipoAnimal === "all" ? undefined : tipoAnimal,
+    setLocalFilters(filters)
+  }, [filters])
+
+  const handleFilterChange = (key: string, value: string) => {
+    const newFilters = { ...localFilters, [key]: value }
+    setLocalFilters(newFilters)
+    onFiltersChange(newFilters)
+  }
+
+  const clearAllFilters = () => {
+    const clearedFilters = {
+      search: "",
+      raza: "all",
+      categoria: "all",
+      tipoAnimal: "all",
+      sexo: "all",
+      estado: "all",
+      ordenar: "createdAt",
     }
-
-    // Remover valores undefined
-    const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== undefined))
-
-    onFiltersChange(cleanFilters)
-  }, [search, categoria, raza, sexo, enRemate, sortBy, sortOrder, tipoAnimal, onFiltersChange])
-
-  const clearFilters = () => {
-    setSearch("")
-    setCategoria("all")
-    setRaza("all")
-    setSexo("all")
-    setEnRemate("all")
-    setSortBy("createdAt")
-    setSortOrder("desc")
-    setTipoAnimal("all")
+    setLocalFilters(clearedFilters)
+    onFiltersChange(clearedFilters)
   }
 
-  const hasActiveFilters =
-    search ||
-    categoria !== "all" ||
-    raza !== "all" ||
-    sexo !== "all" ||
-    enRemate !== "all" ||
-    sortBy !== "createdAt" ||
-    sortOrder !== "desc" ||
-    tipoAnimal !== "all"
-
-  const toggleSortOrder = () => {
-    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+  const getActiveFiltersCount = () => {
+    let count = 0
+    if (localFilters.search) count++
+    if (localFilters.raza && localFilters.raza !== "all") count++
+    if (localFilters.categoria && localFilters.categoria !== "all") count++
+    if (localFilters.tipoAnimal && localFilters.tipoAnimal !== "all") count++
+    if (localFilters.sexo && localFilters.sexo !== "all") count++
+    if (localFilters.estado && localFilters.estado !== "all") count++
+    return count
   }
+
+  const activeFiltersCount = getActiveFiltersCount()
 
   return (
     <Card className="w-full">
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          {/* Búsqueda y controles principales */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtros
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFiltersCount}
+              </Badge>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {activeFiltersCount > 0 && (
+              <Button variant="outline" size="sm" onClick={clearAllFilters} className="text-xs bg-transparent">
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Limpiar
+              </Button>
+            )}
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  {isOpen ? "Ocultar" : "Mostrar"}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          </div>
+        </div>
+      </CardHeader>
+
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            {/* Búsqueda */}
+            <div className="space-y-2">
+              <Label htmlFor="search" className="text-sm font-medium">
+                Buscar
+              </Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nombre, raza, propietario..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  id="search"
+                  placeholder="Buscar por nombre, propietario, ficha..."
+                  value={localFilters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
                   className="pl-10"
-                  disabled={loading}
+                  disabled={isLoading}
                 />
+                {localFilters.search && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                    onClick={() => handleFilterChange("search", "")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
-                disabled={loading}
-              >
-                <Filter className="h-4 w-4" />
-                Filtros
-                {hasActiveFilters && (
-                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                    {
-                      [
-                        search,
-                        categoria !== "all",
-                        raza !== "all",
-                        sexo !== "all",
-                        enRemate !== "all",
-                        sortBy !== "createdAt",
-                        sortOrder !== "desc",
-                        tipoAnimal !== "all",
-                      ].filter(Boolean).length
-                    }
-                  </Badge>
-                )}
-              </Button>
-
-              {hasActiveFilters && (
-                <Button variant="outline" onClick={clearFilters} size="sm" disabled={loading}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Filtros expandibles */}
-          {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-4 border-t">
-              {/* Tipo de Animal */}
+            {/* Grid de filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Raza - PRIMERO */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Tipo de Animal</Label>
-                <Select value={tipoAnimal} onValueChange={setTipoAnimal} disabled={loading}>
+                <Label className="text-sm font-medium">Raza</Label>
+                <Select
+                  value={localFilters.raza}
+                  onValueChange={(value) => handleFilterChange("raza", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
+                    <SelectValue placeholder="Todas las razas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los tipos</SelectItem>
-                    {animalTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                    <SelectItem value="all">Todas las razas</SelectItem>
+                    {availableFilters?.breeds?.map((breed) => (
+                      <SelectItem key={breed} value={breed}>
+                        {breed}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -165,33 +159,41 @@ export function GanadoFilters({
               {/* Categoría */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Categoría</Label>
-                <Select value={categoria} onValueChange={setCategoria} disabled={loading}>
+                <Select
+                  value={localFilters.categoria}
+                  onValueChange={(value) => handleFilterChange("categoria", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
+                    <SelectValue placeholder="Todas las categorías" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las categorías</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.nombre}
+                    {availableFilters?.categories?.map((category) => (
+                      <SelectItem key={category.id} value={category.nombre}>
+                        {category.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Raza */}
+              {/* Tipo de Animal */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Raza</Label>
-                <Select value={raza} onValueChange={setRaza} disabled={loading}>
+                <Label className="text-sm font-medium">Tipo de Animal</Label>
+                <Select
+                  value={localFilters.tipoAnimal}
+                  onValueChange={(value) => handleFilterChange("tipoAnimal", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
+                    <SelectValue placeholder="Todos los tipos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las razas</SelectItem>
-                    {breeds.map((breed) => (
-                      <SelectItem key={breed} value={breed}>
-                        {breed}
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    {availableFilters?.animalTypes?.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -201,7 +203,11 @@ export function GanadoFilters({
               {/* Sexo */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Sexo</Label>
-                <Select value={sexo} onValueChange={setSexo} disabled={loading}>
+                <Select
+                  value={localFilters.sexo}
+                  onValueChange={(value) => handleFilterChange("sexo", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
@@ -213,17 +219,22 @@ export function GanadoFilters({
                 </Select>
               </div>
 
-              {/* En Remate */}
+              {/* Estado */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Estado</Label>
-                <Select value={enRemate} onValueChange={setEnRemate} disabled={loading}>
+                <Select
+                  value={localFilters.estado}
+                  onValueChange={(value) => handleFilterChange("estado", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
+                    <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="true">En Remate</SelectItem>
-                    <SelectItem value="false">No en Remate</SelectItem>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="destacado">Destacado</SelectItem>
+                    <SelectItem value="ganador">Ganador</SelectItem>
+                    <SelectItem value="remate">En Remate</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -231,98 +242,115 @@ export function GanadoFilters({
               {/* Ordenar por */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Ordenar por</Label>
-                <Select value={sortBy} onValueChange={setSortBy} disabled={loading}>
+                <Select
+                  value={localFilters.ordenar}
+                  onValueChange={(value) => handleFilterChange("ordenar", value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Sin ordenar</SelectItem>
-                    {sortOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="createdAt">Más recientes</SelectItem>
+                    <SelectItem value="nombre">Nombre A-Z</SelectItem>
+                    <SelectItem value="fecha">Fecha de nacimiento</SelectItem>
+                    <SelectItem value="peso">Peso</SelectItem>
+                    <SelectItem value="puntaje">Puntaje</SelectItem>
+                    <SelectItem value="ficha">Número de ficha</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              {/* Orden */}
-              {sortBy !== "none" && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Orden</Label>
-                  <Button
-                    variant="outline"
-                    onClick={toggleSortOrder}
-                    className="w-full justify-start bg-transparent"
-                    disabled={loading}
-                  >
-                    {sortOrder === "asc" ? (
-                      <>
-                        <ArrowUp className="h-4 w-4 mr-2" />
-                        Ascendente
-                      </>
-                    ) : (
-                      <>
-                        <ArrowDown className="h-4 w-4 mr-2" />
-                        Descendente
-                      </>
-                    )}
-                  </Button>
+            {/* Filtros activos */}
+            {activeFiltersCount > 0 && (
+              <div className="pt-4 border-t">
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground">Filtros activos:</span>
+                  {localFilters.search && (
+                    <Badge variant="secondary" className="text-xs">
+                      Búsqueda: {localFilters.search}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("search", "")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {localFilters.raza && localFilters.raza !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Raza: {localFilters.raza}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("raza", "all")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {localFilters.categoria && localFilters.categoria !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Categoría: {localFilters.categoria}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("categoria", "all")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {localFilters.tipoAnimal && localFilters.tipoAnimal !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Tipo: {localFilters.tipoAnimal}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("tipoAnimal", "all")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {localFilters.sexo && localFilters.sexo !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Sexo: {localFilters.sexo}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("sexo", "all")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {localFilters.estado && localFilters.estado !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Estado: {localFilters.estado}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 h-3 w-3 p-0"
+                        onClick={() => handleFilterChange("estado", "all")}
+                      >
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Filtros activos */}
-          {hasActiveFilters && (
-            <div className="flex flex-wrap gap-2 pt-2 border-t">
-              {search && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Búsqueda: "{search}"
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setSearch("")} />
-                </Badge>
-              )}
-              {tipoAnimal !== "all" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Tipo: {tipoAnimal}
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setTipoAnimal("all")} />
-                </Badge>
-              )}
-              {categoria !== "all" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Categoría: {categories.find((c) => c.id === categoria)?.nombre || categoria}
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setCategoria("all")} />
-                </Badge>
-              )}
-              {raza !== "all" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Raza: {raza}
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setRaza("all")} />
-                </Badge>
-              )}
-              {sexo !== "all" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Sexo: {sexo}
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setSexo("all")} />
-                </Badge>
-              )}
-              {enRemate !== "all" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  {enRemate === "true" ? "En Remate" : "No en Remate"}
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setEnRemate("all")} />
-                </Badge>
-              )}
-              {sortBy !== "none" && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <ArrowUpDown className="h-3 w-3" />
-                  {sortOptions.find((opt) => opt.value === sortBy)?.label} ({sortOrder === "asc" ? "A-Z" : "Z-A"})
-                  <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => setSortBy("none")} />
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
+              </div>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   )
 }
