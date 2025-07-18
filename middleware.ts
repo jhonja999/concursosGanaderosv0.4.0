@@ -22,13 +22,23 @@ export async function middleware(request: NextRequest) {
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
     "/api/auth/verify-reset-token",
+    "/api/ganado", // Add ganado API to public paths
+    "/api/concursos",
+    "/ganado",
+    "/concursos",
+    "/ganadores",
+    "/programacion",
+    "/contacto",
   ]
 
   // Rutas de admin que requieren SUPERADMIN
   const adminPaths = ["/admin"]
 
-  // Verificar si es una ruta pública
-  if (publicPaths.some((path) => pathname.startsWith(path))) {
+  // Verificar si es una ruta pública o si comienza con un slug de concurso
+  if (
+    publicPaths.some((path) => pathname.startsWith(path)) ||
+    pathname.match(/^\/[^/]+\/(participantes)?$/) // Match /{slug} or /{slug}/participantes
+  ) {
     return NextResponse.next({
       request: {
         headers: requestHeaders,

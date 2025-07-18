@@ -4,16 +4,6 @@ import { verifyToken } from "@/lib/jwt"
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth-token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    const payload = await verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search")
     const categoria = searchParams.get("categoria")
@@ -25,13 +15,40 @@ export async function GET(request: NextRequest) {
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "20")
     const skip = (page - 1) * limit
+    const contestSlug = searchParams.get("contestSlug")
 
     // Construir filtros
     const where: any = {}
 
-    // Filtrar por compañía si no es SUPERADMIN
-    if (!payload.roles?.includes("SUPERADMIN")) {
-      where.companyId = payload.companyId
+    // If a contest slug is provided, filter by that contest
+    if (contestSlug) {
+      where.contest = {
+        slug: contestSlug,
+        isActive: true, // Only show animals from active contests
+      }
+    } else {
+      // For general listing, only show animals from active contests
+      where.contest = {
+        isActive: true,
+      }
+    }
+
+    // Check for authentication token for admin features
+    const token = request.cookies.get("auth-token")?.value
+    let isAuthenticated = false
+    let payload = null
+
+    if (token) {
+      payload = await verifyToken(token)
+      isAuthenticated = !!payload
+    }
+
+    // If authenticated as admin, allow filtering by company
+    if (isAuthenticated && payload?.roles) {
+      // Filter by compañía if not SUPERADMIN and no specific contest is requested
+      if (!payload.roles.includes("SUPERADMIN") && !contestSlug) {
+        where.companyId = payload.companyId
+      }
     }
 
     if (search) {
@@ -125,13 +142,11 @@ export async function GET(request: NextRequest) {
     // Obtener filtros dinámicos
     const [categories, breeds, animalTypes] = await Promise.all([
       prisma.contestCategory.findMany({
-        where: payload.roles?.includes("SUPERADMIN")
-          ? {}
-          : {
-              contest: {
-                companyId: payload.companyId || undefined,
-              },
-            },
+        where: contestSlug
+          ? { contest: { slug: contestSlug } }
+          : isAuthenticated && !payload?.roles?.includes("SUPERADMIN") && payload?.companyId
+            ? { contest: { companyId: payload.companyId } }
+            : {},
         select: {
           id: true,
           nombre: true,
@@ -140,13 +155,21 @@ export async function GET(request: NextRequest) {
         orderBy: { nombre: "asc" },
       }),
       prisma.ganado.findMany({
-        where: payload.roles?.includes("SUPERADMIN") ? {} : { companyId: payload.companyId },
+        where: contestSlug
+          ? { contest: { slug: contestSlug } }
+          : isAuthenticated && !payload?.roles?.includes("SUPERADMIN") && payload?.companyId
+            ? { companyId: payload.companyId }
+            : {},
         select: { raza: true },
         distinct: ["raza"],
         orderBy: { raza: "asc" },
       }),
       prisma.ganado.findMany({
-        where: payload.roles?.includes("SUPERADMIN") ? {} : { companyId: payload.companyId },
+        where: contestSlug
+          ? { contest: { slug: contestSlug } }
+          : isAuthenticated && !payload?.roles?.includes("SUPERADMIN") && payload?.companyId
+            ? { companyId: payload.companyId }
+            : {},
         select: { tipoAnimal: true },
         distinct: ["tipoAnimal"],
         orderBy: { tipoAnimal: "asc" },
