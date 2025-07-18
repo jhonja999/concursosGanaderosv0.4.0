@@ -8,9 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { prisma } from "@/lib/prisma"
 import AnimalSlider from "@/components/AnimalSlider"
-import { SiteFooter } from "@/components/shared/site-footer"
 import { headers } from "next/headers" // Import headers for server-side cookie access
-import {ClientNavbar} from "@/components/shared/clientnavbar"
 
 // Componente para manejar imágenes con error handling
 function ImageWithFallback({
@@ -146,7 +144,7 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <ClientNavbar user={user} />
+      {/* <HomeNavbar user={user} /> */}
 
       {/* Hero Section with Background Image and Slider */}
       <section className="w-full h-screen relative overflow-hidden">
@@ -686,7 +684,7 @@ export default async function HomePage() {
       </section>
 
       {/* Footer */}
-      <SiteFooter />
+      {/* <SiteFooter /> */}
     </div>
   )
 }

@@ -21,8 +21,8 @@ export function Logo({ variant = "default", size = "md", href = "/", className }
       <div className="w-8 h-8 bg-primary-foreground rounded-lg flex items-center justify-center">
         <Crown className="text-emerald-600" size={24} />
       </div>
-      {variant === "default" && <span>Lo Mejor de Mi Tierra</span>}
-      {variant === "compact" && <span>LMMT</span>}
+      {variant === "default" && <span className="hidden sm:inline">Lo Mejor de Mi Tierra</span>}
+      {variant === "compact" && <span className="hidden sm:inline">LMMT</span>}
     </div>
   )
 

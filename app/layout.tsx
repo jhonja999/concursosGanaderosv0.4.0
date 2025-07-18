@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { SiteHeader } from "@/components/shared/site-header"
 import { SiteFooter } from "@/components/shared/site-footer"
+import { HomeNavbar } from "@/components/shared/HomeNavbar"
 
 export const metadata: Metadata = {
   title: "Lo Mejor de Mi Tierra - Concursos Ganaderos Cajamarca",
@@ -62,7 +62,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="font-nunito antialiased min-h-screen bg-gray-50">
+      <body className="font-nunito antialiased min-h-screen bg-gray-50 dark:bg-gray-900">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -70,9 +70,9 @@ export default function RootLayout({
           disableTransitionOnChange={false}
           storageKey="lomejordemitierra-theme"
         >
-          <div className="relative flex min-h-screen flex-col">
-            <SiteHeader />
-            <main className="flex-1">{children}</main>
+          <div className="relative flex min-h-screen flex-col bg-background">
+            <HomeNavbar />
+            <main className="flex-1 bg-background">{children}</main>
             <SiteFooter />
           </div>
           <Toaster />
