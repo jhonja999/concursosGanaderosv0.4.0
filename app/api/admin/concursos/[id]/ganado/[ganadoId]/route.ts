@@ -29,7 +29,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         establo: true,
         contestCategory: true,
         contest: {
-          select: { nombre: true },
+          select: {
+            id: true,
+            nombre: true,
+            companyId: true,
+          },
         },
         company: {
           select: { nombre: true },
@@ -44,7 +48,31 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Animal no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json(ganado)
+    // Transform the data to match what the form expects
+    const transformedGanado = {
+      ...ganado,
+      imagenes: ganado.imagenUrl ? [ganado.imagenUrl] : [],
+      documentos: [],
+      // Add propietario fields for the form
+      propietarioNombre: ganado.propietario?.nombreCompleto || "",
+      propietarioDocumento: ganado.propietario?.documentoLegal || "",
+      propietarioTelefono: ganado.propietario?.telefono || "",
+      propietarioEmail: ganado.propietario?.email || "",
+      propietarioDireccion: ganado.propietario?.direccion || "",
+      // Add expositor fields for the form
+      expositorNombre: ganado.expositor?.nombreCompleto || "",
+      expositorDocumento: ganado.expositor?.documentoIdentidad || "",
+      expositorTelefono: ganado.expositor?.telefono || "",
+      expositorEmail: ganado.expositor?.email || "",
+      expositorEmpresa: ganado.expositor?.empresa || "",
+      expositorExperiencia: ganado.expositor?.experiencia || "",
+      // Format dates and numbers
+      fechaNacimientoFormatted: ganado.fechaNacimiento ? ganado.fechaNacimiento.toISOString().split("T")[0] : "",
+      peso: ganado.pesoKg?.toString() || "",
+      puntaje: ganado.puntaje?.toString() || "",
+    }
+
+    return NextResponse.json({ ganado: transformedGanado })
   } catch (error) {
     console.error("Error fetching ganado:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
@@ -234,7 +262,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       },
     })
 
-    return NextResponse.json(updatedGanado)
+    return NextResponse.json({ ganado: updatedGanado })
   } catch (error) {
     console.error("Error updating ganado:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

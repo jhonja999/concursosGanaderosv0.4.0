@@ -25,7 +25,7 @@ import { Search, Plus, MoreHorizontal, Edit, Trash2, Eye, Download } from "lucid
 import { formatDate } from "@/lib/utils"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { PageHeader } from "@/components/shared/page-header" // Import PageHeader
+import { PageHeader } from "@/components/shared/page-header"
 
 interface Ganado {
   id: string
@@ -110,7 +110,7 @@ export default function ParticipantesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
-  const [contestName, setContestName] = useState<string>("") // State to hold contest name for breadcrumbs
+  const [contestName, setContestName] = useState<string>("")
 
   // Data for filters
   const [categorias, setCategorias] = useState<ContestCategory[]>([])
@@ -164,7 +164,6 @@ export default function ParticipantesPage() {
       const establoRes = await fetch(`/api/admin/establos?contestId=${contestId}`)
       if (establoRes.ok) {
         const data = await establoRes.json()
-        // Handle both possible response formats
         setEstablos(Array.isArray(data) ? data : data.establos || [])
       }
     } catch (error) {
@@ -552,7 +551,7 @@ export default function ParticipantesPage() {
               </div>
               <div>
                 <h4 className="text-lg font-semibold mb-3">Propietario</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Nombre</label>
                     <p>{selectedGanado.propietario.nombreCompleto}</p>
@@ -574,7 +573,7 @@ export default function ParticipantesPage() {
               {selectedGanado.expositor && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Expositor</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Nombre</label>
                       <p>{selectedGanado.expositor.nombreCompleto}</p>
@@ -589,7 +588,7 @@ export default function ParticipantesPage() {
               {(selectedGanado.padre || selectedGanado.madre || selectedGanado.lineaGenetica) && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Genealogía</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Padre</label>
                       <p>{selectedGanado.padre || "N/A"}</p>
@@ -608,7 +607,7 @@ export default function ParticipantesPage() {
               {selectedGanado.enRemate && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3">Información de Remate</h4>
-                  <div className="p-4 bg-red-50 rounded-lg">
+                  <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Precio Base</label>
                       <p className="text-lg font-semibold">

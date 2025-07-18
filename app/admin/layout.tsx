@@ -449,7 +449,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const unreadNotificationsCount = notifications.filter((notification) => !notification.isRead).length
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/50">
       {/* Mobile sidebar backdrop */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeMobileSidebar} />
@@ -458,7 +458,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-white shadow-lg transition-all duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 bg-background shadow-lg transition-all duration-300 ease-in-out",
           "transform lg:transform-none",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0",
@@ -467,9 +467,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div className="flex flex-col h-full">
           {/* Header - Now clickable */}
-          <div className="flex items-center justify-between h-16 px-4 border-b bg-white">
-            <Link 
-              href="/admin" 
+          <div className="flex items-center justify-between h-16 px-4 border-b bg-background">
+            <Link
+              href="/admin/dashboard"
               className="flex items-center space-x-2 overflow-hidden hover:opacity-80 transition-opacity"
             >
               <Building2 className="h-8 w-8 text-primary flex-shrink-0" />
@@ -487,14 +487,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* User info */}
           {!isCollapsed && (
-            <div className="p-4 border-b bg-white">
+            <div className="p-4 border-b bg-background">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
                   {user.nombre.charAt(0)}
                   {user.apellido.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {user.nombre} {user.apellido}
                   </p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
@@ -508,7 +508,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Collapsed user avatar */}
           {isCollapsed && (
-            <div className="p-2 border-b bg-white flex justify-center">
+            <div className="p-2 border-b bg-background flex justify-center">
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-medium">
                 {user.nombre.charAt(0)}
                 {user.apellido.charAt(0)}
@@ -517,12 +517,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
 
           {/* Navigation */}
-          <nav className="flex-1 px-2 py-4 space-y-1 bg-white overflow-y-auto">
+          <nav className="flex-1 px-2 py-4 space-y-1 bg-background overflow-y-auto">
             {navigation.map((item) => renderNavigationItem(item))}
           </nav>
 
           {/* Footer */}
-          <div className="p-2 border-t bg-white">
+          <div className="p-2 border-t bg-background">
             <Button
               variant="ghost"
               className={cn(
@@ -542,7 +542,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <div className={cn("transition-all duration-300", mainMargin)}>
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white shadow-sm border-b">
+        <div className="sticky top-0 z-30 bg-background shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setIsSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
@@ -579,12 +579,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <div key={notification.id} className="py-3 first:pt-0 last:pb-0">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {notification.title}
-                                  </p>
-                                  <p className="text-sm text-gray-500 truncate">
-                                    {notification.message}
-                                  </p>
+                                  <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                                  <p className="text-sm text-gray-500 truncate">{notification.message}</p>
                                   <p className="text-xs text-gray-400 mt-1">
                                     {new Date(notification.createdAt).toLocaleString()}
                                   </p>
@@ -597,7 +593,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           ))}
                         </div>
                         {unreadNotificationsCount > 0 && (
-                          <Button onClick={markAllAsRead} className="w-full" variant="outline">
+                          <Button onClick={markAllAsRead} className="w-full bg-transparent" variant="outline">
                             Marcar todas como leídas
                           </Button>
                         )}

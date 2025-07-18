@@ -4,119 +4,94 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle, Mountain, Users } from "lucide-react"
-import { Logo } from "@/components/shared/logo"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react"
 import { Breadcrumbs } from "@/components/shared/breadcrumbs"
 import { WeatherBanner } from "@/components/shared/weather-banner"
-import { useToast } from "@/hooks/use-toast"
-
-const distritosCajamarca = [
-  "Cajamarca",
-  "Asunción",
-  "Chetilla",
-  "Cospan",
-  "Encañada",
-  "Jesús",
-  "Llacanora",
-  "Los Baños del Inca",
-  "Magdalena",
-  "Matara",
-  "Namora",
-  "San Juan",
-]
-
-const tiposConsulta = [
-  "Información sobre concursos",
-  "Registro de participantes",
-  "Consultas técnicas",
-  "Patrocinio y auspicio",
-  "Quejas y sugerencias",
-  "Otros",
-]
-
-interface FormData {
-  nombre: string
-  distrito: string
-  telefono: string
-  email: string
-  tipoConsulta: string
-  mensaje: string
-}
 
 export default function ContactoClientPage() {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     nombre: "",
-    distrito: "",
-    telefono: "",
     email: "",
-    tipoConsulta: "",
+    telefono: "",
+    asunto: "",
     mensaje: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const { toast } = useToast()
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!formData.nombre || !formData.email || !formData.mensaje) {
+      toast.error("Por favor completa todos los campos obligatorios")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // Simular envío del formulario
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Crear mensaje para WhatsApp
+      const whatsappMessage = `
+*Nueva Consulta - Lo Mejor de Mi Tierra*
 
-      setIsSubmitted(true)
-      toast({
-        title: "Mensaje enviado exitosamente",
-        description: "Nos pondremos en contacto contigo pronto.",
+*Nombre:* ${formData.nombre}
+*Email:* ${formData.email}
+*Teléfono:* ${formData.telefono || "No proporcionado"}
+*Asunto:* ${formData.asunto || "Consulta general"}
+
+*Mensaje:*
+${formData.mensaje}
+
+---
+Enviado desde el formulario de contacto web
+      `.trim()
+
+      // Número de WhatsApp (puedes cambiarlo por el número real)
+      const whatsappNumber = "51976123456" // Cambiar por el número real
+      const encodedMessage = encodeURIComponent(whatsappMessage)
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
+
+      // Abrir WhatsApp
+      window.open(whatsappUrl, "_blank")
+
+      // Limpiar formulario
+      setFormData({
+        nombre: "",
+        email: "",
+        telefono: "",
+        asunto: "",
+        mensaje: "",
       })
 
-      // Resetear formulario después de 3 segundos
-      setTimeout(() => {
-        setIsSubmitted(false)
-        setFormData({
-          nombre: "",
-          distrito: "",
-          telefono: "",
-          email: "",
-          tipoConsulta: "",
-          mensaje: "",
-        })
-      }, 3000)
+      toast.success("¡Consulta preparada! Se abrirá WhatsApp para enviar tu mensaje.")
     } catch (error) {
-      toast({
-        title: "Error al enviar mensaje",
-        description: "Por favor, intenta nuevamente.",
-        variant: "destructive",
-      })
+      console.error("Error:", error)
+      toast.error("Error al procesar la consulta. Por favor intenta nuevamente.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const isFormValid =
-    formData.nombre && formData.distrito && formData.telefono && formData.tipoConsulta && formData.mensaje
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-background">
+         {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
 
         <div className="container mx-auto px-4 py-12 sm:py-16 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="flex justify-center mb-6">
-              <Logo className="text-white" size="lg" href={null} />
-            </div>
-
             <div className="flex justify-center mb-6">
               <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
                 <Phone className="h-16 w-16 text-blue-200" />
@@ -127,13 +102,6 @@ export default function ContactoClientPage() {
             <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 opacity-95 leading-relaxed px-4">
               Estamos aquí para ayudarte con tus consultas sobre concursos ganaderos
             </p>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 sm:p-6">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <Mountain className="h-6 w-6" />
-                <span className="text-lg font-semibold">Campo Ferial de Cajamarca - 2,750 msnm</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -145,261 +113,210 @@ export default function ContactoClientPage() {
         {/* Banner del clima */}
         <WeatherBanner />
 
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Información de Contacto */}
-          <div className="space-y-6">
-            <Card className="border-2 border-blue-200 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <MapPin className="h-6 w-6" />
-                  Información de Contacto
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Dirección */}
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <MapPin className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-1">Dirección</h3>
-                    <p className="text-gray-600">Campo Ferial de Cajamarca</p>
-                    <p className="text-gray-600">Cajamarca, Perú</p>
-                    <p className="text-sm text-blue-600 font-medium">2,750 metros sobre el nivel del mar</p>
-                  </div>
-                </div>
 
-                {/* Teléfono */}
-                <div className="flex items-start gap-4">
-                  <div className="bg-green-100 p-3 rounded-lg">
-                    <Phone className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-1">Teléfono</h3>
-                    <p className="text-gray-600">(076) 123-456</p>
-                    <p className="text-sm text-gray-500">Línea directa para consultas</p>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="flex items-start gap-4">
-                  <div className="bg-red-100 p-3 rounded-lg">
-                    <Mail className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-1">Correo Electrónico</h3>
-                    <p className="text-gray-600">quipusoftcax@gmail.com</p>
-                    <p className="text-sm text-gray-500">Respuesta en 24-48 horas</p>
-                  </div>
-                </div>
-
-                {/* Horarios */}
-                <div className="flex items-start gap-4">
-                  <div className="bg-orange-100 p-3 rounded-lg">
-                    <Clock className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-1">Horario de Atención</h3>
-                    <p className="text-gray-600">Lunes a Sábado</p>
-                    <p className="text-gray-600 font-semibold">7:00 AM - 5:00 PM</p>
-                    <p className="text-sm text-gray-500">Domingos: Solo eventos especiales</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Información Adicional */}
-            <Card className="border-2 border-green-200 bg-green-50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <Users className="h-6 w-6" />
-                  ¿Cómo podemos ayudarte?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-green-800 mb-2">🏆 Participantes</h4>
-                    <p className="text-sm text-green-700">
-                      Información sobre registro, requisitos, categorías y fechas de concursos.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-green-800 mb-2">🤝 Organizadores</h4>
-                    <p className="text-sm text-green-700">
-                      Consultas sobre patrocinio, auspicio y organización de eventos.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-green-800 mb-2">📋 Información General</h4>
-                    <p className="text-sm text-green-700">
-                      Dudas sobre ubicaciones, horarios, resultados y programación.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Formulario de Contacto */}
-          <Card className="border-2 border-gray-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Send className="h-6 w-6 text-blue-600" />
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <MessageCircle className="h-6 w-6 text-green-600" />
                 Envíanos tu Consulta
               </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Completa el formulario y te contactaremos vía WhatsApp
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {isSubmitted ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
-                  <h3 className="text-xl font-bold text-green-600 mb-2">¡Mensaje Enviado!</h3>
-                  <p className="text-gray-600 mb-4">
-                    Gracias por contactarnos. Nos pondremos en contacto contigo pronto.
-                  </p>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-sm text-green-700">
-                      <strong>Tiempo de respuesta:</strong> 24-48 horas hábiles
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Nombre Completo */}
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre" className="text-base font-semibold">
+                    <Label htmlFor="nombre" className="text-foreground">
                       Nombre Completo *
                     </Label>
                     <Input
                       id="nombre"
+                      name="nombre"
                       type="text"
                       value={formData.nombre}
-                      onChange={(e) => handleInputChange("nombre", e.target.value)}
-                      placeholder="Ingresa tu nombre completo"
-                      className="h-12 text-base"
+                      onChange={handleInputChange}
                       required
+                      className="bg-background border-input text-foreground"
+                      placeholder="Tu nombre completo"
                     />
                   </div>
-
-                  {/* Distrito y Teléfono */}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="distrito" className="text-base font-semibold">
-                        Distrito de Procedencia *
-                      </Label>
-                      <Select value={formData.distrito} onValueChange={(value) => handleInputChange("distrito", value)}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="Selecciona tu distrito" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {distritosCajamarca.map((distrito) => (
-                            <SelectItem key={distrito} value={distrito}>
-                              {distrito}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="telefono" className="text-base font-semibold">
-                        Teléfono *
-                      </Label>
-                      <Input
-                        id="telefono"
-                        type="tel"
-                        value={formData.telefono}
-                        onChange={(e) => handleInputChange("telefono", e.target.value)}
-                        placeholder="Ej: 976 123 456"
-                        className="h-12 text-base"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-base font-semibold">
-                      Correo Electrónico (Opcional)
+                    <Label htmlFor="email" className="text-foreground">
+                      Correo Electrónico *
                     </Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      placeholder="tu@email.com"
-                      className="h-12 text-base"
-                    />
-                  </div>
-
-                  {/* Tipo de Consulta */}
-                  <div className="space-y-2">
-                    <Label htmlFor="tipoConsulta" className="text-base font-semibold">
-                      Tipo de Consulta *
-                    </Label>
-                    <Select
-                      value={formData.tipoConsulta}
-                      onValueChange={(value) => handleInputChange("tipoConsulta", value)}
-                    >
-                      <SelectTrigger className="h-12">
-                        <SelectValue placeholder="Selecciona el tipo de consulta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tiposConsulta.map((tipo) => (
-                          <SelectItem key={tipo} value={tipo}>
-                            {tipo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Mensaje */}
-                  <div className="space-y-2">
-                    <Label htmlFor="mensaje" className="text-base font-semibold">
-                      Mensaje *
-                    </Label>
-                    <Textarea
-                      id="mensaje"
-                      value={formData.mensaje}
-                      onChange={(e) => handleInputChange("mensaje", e.target.value)}
-                      placeholder="Describe tu consulta o mensaje..."
-                      className="min-h-32 text-base resize-none"
+                      onChange={handleInputChange}
                       required
+                      className="bg-background border-input text-foreground"
+                      placeholder="tu@email.com"
                     />
-                    <p className="text-sm text-gray-500">
-                      Mínimo 10 caracteres. Sé específico para una mejor atención.
-                    </p>
                   </div>
+                </div>
 
-                  {/* Botón de Envío */}
-                  <Button
-                    type="submit"
-                    disabled={!isFormValid || isSubmitting}
-                    className="w-full h-14 text-base font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-5 w-5 mr-2" />
-                        Enviar Mensaje
-                      </>
-                    )}
-                  </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono" className="text-foreground">
+                      Teléfono
+                    </Label>
+                    <Input
+                      id="telefono"
+                      name="telefono"
+                      type="tel"
+                      value={formData.telefono}
+                      onChange={handleInputChange}
+                      className="bg-background border-input text-foreground"
+                      placeholder="+51 999 999 999"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="asunto" className="text-foreground">
+                      Asunto
+                    </Label>
+                    <Input
+                      id="asunto"
+                      name="asunto"
+                      type="text"
+                      value={formData.asunto}
+                      onChange={handleInputChange}
+                      className="bg-background border-input text-foreground"
+                      placeholder="Tema de tu consulta"
+                    />
+                  </div>
+                </div>
 
-                  <p className="text-sm text-gray-500 text-center">
-                    Al enviar este formulario, aceptas que nos pongamos en contacto contigo para responder tu consulta.
-                  </p>
-                </form>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="mensaje" className="text-foreground">
+                    Mensaje *
+                  </Label>
+                  <Textarea
+                    id="mensaje"
+                    name="mensaje"
+                    value={formData.mensaje}
+                    onChange={handleInputChange}
+                    required
+                    rows={6}
+                    className="bg-background border-input text-foreground resize-none"
+                    placeholder="Describe tu consulta o mensaje..."
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Preparando consulta...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="h-5 w-5 mr-2" />
+                      Enviar por WhatsApp
+                    </>
+                  )}
+                </Button>
+              </form>
             </CardContent>
           </Card>
+
+          {/* Información de Contacto */}
+          <div className="space-y-8">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-foreground">Información de Contacto</CardTitle>
+                <CardDescription className="text-muted-foreground">Otras formas de contactarnos</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-lg">
+                    <MessageCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">WhatsApp</h3>
+                    <p className="text-muted-foreground">+51 976 123 456</p>
+                    <p className="text-sm text-muted-foreground">Respuesta inmediata durante horario de oficina</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-lg">
+                    <Mail className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Correo Electrónico</h3>
+                    <p className="text-muted-foreground">quipusoftcax@gmail.com</p>
+                    <p className="text-sm text-muted-foreground">Respuesta en 24-48 horas</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="bg-orange-100 dark:bg-orange-900/20 p-3 rounded-lg">
+                    <Phone className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Teléfono</h3>
+                    <p className="text-muted-foreground">+51 976 123 456</p>
+                    <p className="text-sm text-muted-foreground">Lunes a Viernes, 9:00 AM - 6:00 PM</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="bg-purple-100 dark:bg-purple-900/20 p-3 rounded-lg">
+                    <MapPin className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Ubicación</h3>
+                    <p className="text-muted-foreground">Lima, Perú</p>
+                    <p className="text-sm text-muted-foreground">Servicio a nivel nacional</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Clock className="h-5 w-5 text-green-600" />
+                  Horarios de Atención
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-foreground">Lunes - Viernes</span>
+                    <span className="text-muted-foreground">9:00 AM - 6:00 PM</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-foreground">Sábados</span>
+                    <span className="text-muted-foreground">9:00 AM - 2:00 PM</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-foreground">Domingos</span>
+                    <span className="text-muted-foreground">Cerrado</span>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>WhatsApp disponible 24/7</strong> - Te responderemos lo antes posible
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
+  </div>
   )
 }
