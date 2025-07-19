@@ -164,9 +164,9 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
   }
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-CO", {
+    return new Intl.NumberFormat("es-PE", {
       style: "currency",
-      currency: "COP",
+      currency: "PEN",
       minimumFractionDigits: 0,
     }).format(price)
   }

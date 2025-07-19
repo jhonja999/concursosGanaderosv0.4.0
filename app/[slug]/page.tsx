@@ -115,15 +115,28 @@ function getAnimalIcon(tipoGanado?: string[]) {
 
 async function getContest(slug: string): Promise<Contest | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/concursos/${slug}`, {
+    // Usar la URL base correcta dependiendo del entorno
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000"
+    const url = `${baseUrl}/api/concursos/${slug}`
+
+    console.log(`Fetching contest from: ${url}`) // Debug log
+
+    const response = await fetch(url, {
       cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
 
+    console.log(`Response status: ${response.status}`) // Debug log
+
     if (!response.ok) {
+      console.log(`Response not ok: ${response.status} ${response.statusText}`) // Debug log
       return null
     }
 
     const data = await response.json()
+    console.log(`Contest data received:`, data.contest?.nombre) // Debug log
     return data.contest
   } catch (error) {
     console.error("Error fetching contest:", error)
@@ -133,9 +146,12 @@ async function getContest(slug: string): Promise<Contest | null> {
 
 export default async function ConcursoPublicoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  console.log(`Loading contest page for slug: ${slug}`) // Debug log
+
   const contest = await getContest(slug)
 
   if (!contest) {
+    console.log(`Contest not found for slug: ${slug}`) // Debug log
     notFound()
   }
 

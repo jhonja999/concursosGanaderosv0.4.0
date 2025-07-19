@@ -9,6 +9,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       return NextResponse.json({ message: "Slug no proporcionado" }, { status: 400 })
     }
 
+    console.log(`Buscando concurso con slug: ${slug}`) // Debug log
+
     const contest = await prisma.contest.findUnique({
       where: { slug: slug },
       include: {
@@ -31,6 +33,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     })
 
     if (!contest) {
+      console.log(`Concurso no encontrado para slug: ${slug}`) // Debug log
       return NextResponse.json({ message: "Concurso no encontrado" }, { status: 404 })
     }
 
@@ -40,6 +43,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
         contestId: contest.id,
       },
     })
+
+    console.log(`Concurso encontrado: ${contest.nombre}, participantes: ${participantCount}`) // Debug log
 
     // Add participant count to the response
     const contestWithCount = {

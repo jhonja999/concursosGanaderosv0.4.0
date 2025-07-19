@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server"
 import { verifyToken } from "@/lib/jwt"
 
 export async function middleware(request: NextRequest) {
-  // Make middleware async
   const { pathname } = request.nextUrl
 
   // Clone the request headers and set the pathname
@@ -22,23 +21,38 @@ export async function middleware(request: NextRequest) {
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
     "/api/auth/verify-reset-token",
-    "/api/ganado", // Add ganado API to public paths
+    "/api/ganado",
     "/api/concursos",
     "/ganado",
     "/concursos",
     "/ganadores",
     "/programacion",
     "/contacto",
+    "/solicitar-compania",
   ]
 
   // Rutas de admin que requieren SUPERADMIN
   const adminPaths = ["/admin"]
 
-  // Verificar si es una ruta pública o si comienza con un slug de concurso
+  // Verificar si es una ruta pública
+  if (publicPaths.some((path) => pathname.startsWith(path))) {
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
+  // Verificar si es una ruta de slug de concurso (cualquier ruta que no sea admin, dashboard, o api)
+  // Permitir rutas como /fongal-2025, /fongal-2025/participantes, etc.
   if (
-    publicPaths.some((path) => pathname.startsWith(path)) ||
-    pathname.match(/^\/[^/]+\/(participantes)?$/) // Match /{slug} or /{slug}/participantes
+    !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/dashboard") &&
+    !pathname.startsWith("/api") &&
+    !pathname.startsWith("/_next") &&
+    pathname !== "/favicon.ico"
   ) {
+    // Esta es probablemente una ruta de slug de concurso, permitirla
     return NextResponse.next({
       request: {
         headers: requestHeaders,
@@ -51,11 +65,7 @@ export async function middleware(request: NextRequest) {
 
   if (!token) {
     // Si no hay token y está intentando acceder a una ruta protegida
-    if (
-      pathname.startsWith("/dashboard") ||
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/solicitar-compania")
-    ) {
+    if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
       return NextResponse.redirect(new URL("/iniciar-sesion", request.url))
     }
     return NextResponse.next({
@@ -66,7 +76,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verificar token
-  const decoded = await verifyToken(token) // Added await here
+  const decoded = await verifyToken(token)
   if (!decoded) {
     // Token inválido, redirigir a login
     const response = NextResponse.redirect(new URL("/iniciar-sesion", request.url))
@@ -76,15 +86,13 @@ export async function middleware(request: NextRequest) {
 
   // Verificar acceso a rutas de admin
   if (adminPaths.some((path) => pathname.startsWith(path))) {
-    if (decoded.roles.includes("SUPERADMIN")) {
-      // Access roles array
+    if (!decoded.roles.includes("SUPERADMIN")) {
       return NextResponse.redirect(new URL("/dashboard", request.url))
     }
   }
 
   // Redirección para usuarios no SUPERADMIN
   if (!decoded.roles.includes("SUPERADMIN")) {
-    // Access roles array
     // Si el usuario no tiene compañía asignada, redirigir a la página de solicitud de compañía
     if (!decoded.companyId) {
       if (!pathname.startsWith("/solicitar-compania")) {
@@ -92,7 +100,6 @@ export async function middleware(request: NextRequest) {
       }
     } else {
       // Si el usuario tiene compañía pero la suscripción no está activa, redirigir a la página de suscripción
-      // Esto asume que 'ACTIVO' es el único estado que permite acceso completo al dashboard
       if (decoded.subscriptionStatus !== "ACTIVO" && !pathname.startsWith("/dashboard/suscripcion")) {
         return NextResponse.redirect(new URL("/dashboard/suscripcion", request.url))
       }
@@ -114,11 +121,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 }
