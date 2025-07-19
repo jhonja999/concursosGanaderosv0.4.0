@@ -43,16 +43,21 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  // Verificar si es una ruta de slug de concurso (cualquier ruta que no sea admin, dashboard, o api)
-  // Permitir rutas como /fongal-2025, /fongal-2025/participantes, etc.
+  // Verificar si es una ruta de API pública de concursos
+  if (pathname.match(/^\/api\/concursos\/[^/]+$/)) {
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
+  // Verificar si es una ruta de slug de concurso o participantes
+  // Permitir rutas como /fongal-2025, /fongal-2025/participantes
   if (
-    !pathname.startsWith("/admin") &&
-    !pathname.startsWith("/dashboard") &&
-    !pathname.startsWith("/api") &&
-    !pathname.startsWith("/_next") &&
-    pathname !== "/favicon.ico"
+    pathname.match(/^\/[a-zA-Z0-9-]+$/) || // /slug
+    pathname.match(/^\/[a-zA-Z0-9-]+\/participantes$/) // /slug/participantes
   ) {
-    // Esta es probablemente una ruta de slug de concurso, permitirla
     return NextResponse.next({
       request: {
         headers: requestHeaders,
