@@ -13,13 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import {
   Menu,
   LogOut,
   Settings,
-  Bell,
   Trophy,
   Calendar,
   Award,
@@ -57,14 +55,9 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState(0)
   const [isScrolled, setIsScrolled] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications()
-    }
-
     // Handle scroll for navbar compression
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50)
@@ -72,19 +65,7 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
 
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [user])
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch("/api/notifications")
-      if (response.ok) {
-        const data = await response.json()
-        setNotifications(data.unreadCount || 0)
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error)
-    }
-  }
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -160,21 +141,6 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
             {/* Theme Toggle */}
             {user ? (
               <div className="flex items-center space-x-2 lg:space-x-3">
-                {/* Notifications */}
-                <Link href="/dashboard/notificaciones">
-                  <Button variant="ghost" size={isScrolled ? "sm" : "default"} className="relative">
-                    <Bell className={cn(isScrolled ? "h-4 w-4" : "h-4 w-4")} />
-                    {notifications > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-xs"
-                      >
-                        {notifications > 9 ? "9+" : notifications}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
-
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -209,18 +175,6 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                         <DropdownMenuSeparator />
                       </>
                     )}
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="flex items-center">
-                        <Home className="mr-2 h-4 w-4" />
-                        <span>Mi Perfil</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/configuracion" className="flex items-center">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Configuración</span>
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
                       <LogOut className="mr-2 h-4 w-4" />
@@ -353,26 +307,12 @@ export function HomeNavbar({ user }: HomeNavbarProps) {
                         )}
 
                         <Link
-                          href="/dashboard"
+                          href="/admin/dashboard"
                           className="flex items-center space-x-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                           onClick={() => setIsOpen(false)}
                         >
                           <Home className="h-4 w-4" />
                           <span className="text-sm font-medium">Mi Perfil</span>
-                        </Link>
-
-                        <Link
-                          href="/dashboard/notificaciones"
-                          className="flex items-center space-x-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <Bell className="h-4 w-4" />
-                          <span className="text-sm font-medium">Notificaciones</span>
-                          {notifications > 0 && (
-                            <Badge variant="destructive" className="ml-auto text-xs">
-                              {notifications > 9 ? "9+" : notifications}
-                            </Badge>
-                          )}
                         </Link>
 
                         <button

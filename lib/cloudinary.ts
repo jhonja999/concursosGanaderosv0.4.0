@@ -4,7 +4,7 @@ import { v2 as cloudinary } from "cloudinary"
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  api_secret: process.env.CLOUDINARY_API_SECRET, // Ensure this is set in your environment variables
 })
 
 export { cloudinary }
@@ -44,7 +44,7 @@ export interface UploadOptions {
   entityId?: string
   allowReuse?: boolean
   forceOverwrite?: boolean
-  upload_preset?: string
+  // upload_preset?: string; // Removed: This is typically for unsigned uploads. For signed uploads, the API secret is used.
 }
 
 export interface ExistingImageInfo {
@@ -127,12 +127,12 @@ export async function uploadToCloudinary(buffer: Buffer, options: UploadOptions 
       const uploadOptions = {
         resource_type: "auto" as const,
         folder: options.folder || "uploads",
-        quality: options.quality || "auto:good",
+        quality: options.quality || "auto:good", // "auto:good" is generally good for quality, use "auto" for original
         tags: options.tags || [],
         use_filename: options.use_filename !== false, // Default to true
         unique_filename: options.unique_filename !== false, // Default to true unless overwriting
         overwrite: options.overwrite || false,
-        upload_preset: "your_upload_preset", // Use your unsigned preset
+        // upload_preset: "your_upload_preset", // Removed: This is typically for unsigned uploads.
       }
 
       console.log("Final upload options:", uploadOptions)
@@ -168,12 +168,12 @@ export async function uploadFromUrl(imageUrl: string, options: UploadOptions = {
 
     const uploadOptions = {
       folder: options.folder || "uploads",
-      quality: options.quality || "auto:good",
+      quality: options.quality || "auto:good", // "auto:good" is generally good for quality, use "auto" for original
       tags: options.tags || [],
       use_filename: options.use_filename !== false,
       unique_filename: options.unique_filename !== false,
       overwrite: options.overwrite || false,
-      upload_preset: "your_upload_preset", // Use your unsigned preset
+      // upload_preset: "your_upload_preset", // Removed: This is typically for unsigned uploads.
     }
 
     console.log("URL upload options:", uploadOptions)

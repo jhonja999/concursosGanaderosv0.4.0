@@ -32,8 +32,8 @@ import { DuplicateImageDialog } from "./duplicate-image-dialog"
 
 interface CloudinaryUploadProps {
   value?: string
-  onChange?: (url: string) => void
-  onSuccess?: (url: string) => void
+  onChange?: (url: string, publicId?: string) => void // Added publicId to onChange
+  onSuccess?: (url: string, publicId?: string) => void // Added publicId to onSuccess
   folder?: string
   label?: string
   description?: string
@@ -334,10 +334,11 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const handleUseExisting = useCallback(() => {
     if (existingImage?.image?.secure_url) {
       const url = existingImage.image.secure_url
+      const publicId = existingImage.image.public_id
       // Prevent form submission/closure
       setTimeout(() => {
-        onChange?.(url)
-        onSuccess?.(url)
+        onChange?.(url, publicId)
+        onSuccess?.(url, publicId)
         toast.success("Imagen existente seleccionada")
       }, 0)
 
@@ -375,8 +376,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
 
       // Prevent form submission/closure
       setTimeout(() => {
-        onChange?.(result.url)
-        onSuccess?.(result.url)
+        onChange?.(result.url, result.publicId)
+        onSuccess?.(result.url, result.publicId)
         toast.success("Imagen sobrescrita exitosamente")
       }, 0)
 
@@ -417,8 +418,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
 
       // Prevent form submission/closure
       setTimeout(() => {
-        onChange?.(result.url)
-        onSuccess?.(result.url)
+        onChange?.(result.url, result.publicId)
+        onSuccess?.(result.url, result.publicId)
         toast.success("Nueva imagen subida exitosamente")
       }, 0)
 
@@ -458,8 +459,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
 
       // Prevent form submission/closure
       setTimeout(() => {
-        onChange?.(result.url)
-        onSuccess?.(result.url)
+        onChange?.(result.url, result.publicId)
+        onSuccess?.(result.url, result.publicId)
         toast.success("Imagen subida exitosamente")
       }, 0)
 
@@ -501,8 +502,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
 
       // Prevent form submission/closure
       setTimeout(() => {
-        onChange?.(result.url)
-        onSuccess?.(result.url)
+        onChange?.(result.url, result.publicId)
+        onSuccess?.(result.url, result.publicId)
         toast.success("Imagen subida exitosamente desde URL")
       }, 0)
 
@@ -528,8 +529,8 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const handleRemoveImage = useCallback(() => {
     // Prevent form submission/closure
     setTimeout(() => {
-      onChange?.("")
-      onSuccess?.("")
+      onChange?.("", "") // Pass empty string for both URL and publicId
+      onSuccess?.("", "")
       toast.success("Imagen eliminada")
     }, 0)
   }, [onChange, onSuccess])

@@ -82,7 +82,7 @@ export default function ProgramacionPage() {
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [selectedImage, currentImageIndex])
+  }, [selectedImage, currentImageIndex, images]) // Added images to dependency array
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,7 +108,7 @@ export default function ProgramacionPage() {
         </div>
 
         {/* Información destacada */}
-       {/*  <Card className="border-2 border-green-200 bg-green-50 mb-8">
+        {/*  <Card className="border-2 border-green-200 bg-green-50 mb-8">
           <CardContent className="p-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-green-800 mb-2">
@@ -152,7 +152,7 @@ export default function ProgramacionPage() {
                   className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
                   onClick={() => openImageModal(image, index)}
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden">
+                  <div className="relative aspect-[4/6] overflow-hidden">
                     <Image
                       src={image.imageUrl || "/placeholder.svg"}
                       alt={image.title}
@@ -167,8 +167,8 @@ export default function ProgramacionPage() {
                     </div>
                   </div>
 
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  <CardContent className="p-2">
+                    <h3 className="font-bold text-lg mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">
                       {image.title}
                     </h3>
 
