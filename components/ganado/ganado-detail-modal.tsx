@@ -284,7 +284,7 @@ export function GanadoDetailModal({ ganado, isOpen, onClose }: GanadoDetailModal
               <div>
                 <h4 className="font-semibold flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Propietario
+                  Criador
                 </h4>
                 <p className="text-sm">{ganado.propietario.nombreCompleto}</p>
                 {ganado.propietario.telefono && (

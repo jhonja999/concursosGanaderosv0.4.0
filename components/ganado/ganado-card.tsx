@@ -339,7 +339,7 @@ export function GanadoCard({ ganado, variant = "public", onViewDetails, onContac
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{ganado.propietario.nombreCompleto}</p>
-              <p className="text-xs text-gray-500">Propietario</p>
+              <p className="text-xs text-gray-500">Criador</p>
               {ganado.expositor && ganado.expositor.nombreCompleto !== ganado.propietario.nombreCompleto && (
                 <p className="text-xs text-blue-600 mt-1">Exp: {ganado.expositor.nombreCompleto}</p>
               )}
