@@ -105,7 +105,7 @@ export default function GanadoPage() {
   const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards") // 'cards' o 'list'
+  const [viewMode, setViewMode] = useState<"cards" | "list">("list") // 'cards' o 'list'
 
   const fetchGanado = useCallback(
     async (page = pagination.page) => {
@@ -272,22 +272,23 @@ export default function GanadoPage() {
           <ToggleGroup
             type="single"
             value={viewMode}
-            onValueChange={(value: "cards" | "list") => value && setViewMode(value)}
+            onValueChange={(value: "list" | "cards") => value && setViewMode(value)}
             aria-label="Seleccionar vista"
           >
-            <ToggleGroupItem
-              value="cards"
-              aria-label="Vista de tarjetas"
-              className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
             <ToggleGroupItem
               value="list"
               aria-label="Vista de lista"
               className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
             >
               <List className="h-4 w-4" />
+            </ToggleGroupItem>
+
+            <ToggleGroupItem
+              value="cards"
+              aria-label="Vista de tarjetas"
+              className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+            >
+              <LayoutGrid className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

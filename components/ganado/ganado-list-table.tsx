@@ -93,7 +93,7 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Ficha</TableHead>
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Categoría</TableHead>
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Raza</TableHead>
-            <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Propietario</TableHead>
+            <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Criador</TableHead>
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Expositor</TableHead>
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Establo</TableHead>
             <TableHead className="text-gray-900 dark:text-gray-100 font-semibold">Edad/Peso</TableHead>
