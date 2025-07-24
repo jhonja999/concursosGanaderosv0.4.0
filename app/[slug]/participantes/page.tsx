@@ -98,7 +98,7 @@ export default function ParticipantesPage({
     estado: searchParams.get("estado") || "all",
     ordenar: searchParams.get("ordenar") || "createdAt",
   })
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards")
+  const [viewMode, setViewMode] = useState<"cards" | "list">("list")
 
   // Ref para evitar múltiples requests simultáneos y para almacenar la última URL de búsqueda
   const fetchingRef = useRef(false)
@@ -365,7 +365,9 @@ export default function ParticipantesPage({
           <CardContent>
             <div className="text-gray-500 dark:text-gray-400 mb-4">
               <div className="text-6xl mb-4">❌</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">Error al cargar</h3>
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">
+                Error al cargar
+              </h3>
               <p className="text-gray-600 dark:text-gray-300">No se pudieron cargar los participantes del concurso.</p>
               <Button
                 className="mt-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
@@ -453,18 +455,18 @@ export default function ParticipantesPage({
           aria-label="Seleccionar vista"
         >
           <ToggleGroupItem
-            value="cards"
-            aria-label="Vista de tarjetas"
-            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white dark:data-[state=on]:bg-blue-600"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
             value="list"
             aria-label="Vista de lista"
             className="data-[state=on]:bg-blue-500 data-[state=on]:text-white dark:data-[state=on]:bg-blue-600"
           >
             <List className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="cards"
+            aria-label="Vista de tarjetas"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white dark:data-[state=on]:bg-blue-600"
+          >
+            <LayoutGrid className="h-4 w-4" />
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
@@ -482,8 +484,12 @@ export default function ParticipantesPage({
             <CardContent>
               <div className="text-gray-500 dark:text-gray-400 mb-4">
                 <div className="text-6xl mb-4">🐄</div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">No hay participantes</h3>
-                <p className="text-gray-600 dark:text-gray-300">No se encontraron animales registrados con los filtros seleccionados.</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">
+                  No hay participantes
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  No se encontraron animales registrados con los filtros seleccionados.
+                </p>
                 <Button
                   className="mt-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
                   onClick={() =>
@@ -552,9 +558,10 @@ export default function ParticipantesPage({
                           variant={pageNum === pagination.page ? "default" : "outline"}
                           size="sm"
                           onClick={() => handlePageChange(pageNum)}
-                          className={pageNum === pagination.page 
-                            ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white" 
-                            : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className={
+                            pageNum === pagination.page
+                              ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
+                              : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                           }
                         >
                           {pageNum}

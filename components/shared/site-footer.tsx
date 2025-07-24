@@ -112,7 +112,7 @@ export function SiteFooter() {
                 © 2025 Lo Mejor de Mi Tierra. Todos los derechos reservados.
               </p>
               <p className="text-gray-400 dark:text-gray-500 text-sm text-center md:text-right">
-                Desarrollado con ❤️ para los ganaderos de Cajamarca
+                Desarrollado por el equipo de Quipusoft
               </p>
             </div>
           </div>
