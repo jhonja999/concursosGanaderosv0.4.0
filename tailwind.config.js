@@ -90,6 +90,14 @@ module.exports = {
           800: "#065f46",
           900: "#064e3b",
         },
+        "app-yellow": {
+          DEFAULT: "hsl(47.9 95.8% 53.1%)", // yellow-500
+          foreground: "hsl(222.2 47.4% 11.2%)", // dark text
+        },
+        "app-blue": {
+          DEFAULT: "hsl(211.7 87.7% 50.8%)", // blue-500
+          foreground: "hsl(210 40% 98%)", // light text
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

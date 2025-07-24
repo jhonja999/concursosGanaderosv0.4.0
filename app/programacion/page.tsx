@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,7 +14,7 @@ import Image from "next/image"
 import { Breadcrumbs } from "@/components/shared/breadcrumbs"
 import { WeatherBanner } from "@/components/shared/weather-banner"
 import { ImageGridSkeleton } from "@/components/shared/loading-skeleton"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog" // Importar DialogTitle
 
 interface ProgramImage {
   id: string
@@ -32,6 +34,11 @@ export default function ProgramacionPage() {
   const [selectedImage, setSelectedImage] = useState<ProgramImage | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
+  // State para manejar el inicio del toque en dispositivos móviles
+  const [touchStartX, setTouchStartX] = useState(0)
+  // Umbral de píxeles para considerar un deslizamiento
+  const touchThreshold = 50
+
   useEffect(() => {
     fetchImages()
   }, [])
@@ -41,7 +48,9 @@ export default function ProgramacionPage() {
       const response = await fetch("/api/program-images")
       if (response.ok) {
         const data = await response.json()
-        setImages(data.images)
+        // Ordenar las imágenes por la propiedad 'order'
+        const sortedData = data.images.sort((a: ProgramImage, b: ProgramImage) => a.order - b.order)
+        setImages(sortedData)
       }
     } catch (error) {
       console.error("Error fetching images:", error)
@@ -71,6 +80,7 @@ export default function ProgramacionPage() {
     setSelectedImage(images[newIndex])
   }
 
+  // Manejador para navegación con teclado (flechas y Esc)
   const handleKeyDown = (e: KeyboardEvent) => {
     if (selectedImage) {
       if (e.key === "ArrowLeft") goToPrevious()
@@ -79,10 +89,31 @@ export default function ProgramacionPage() {
     }
   }
 
+  // Manejador para el inicio del toque (guardar posición inicial X)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX)
+  }
+
+  // Manejador para el final del toque (detectar deslizamiento)
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX
+    const deltaX = touchEndX - touchStartX // Calcular la distancia del deslizamiento
+
+    // Si el deslizamiento es hacia la derecha (deltaX > touchThreshold), ir a la imagen anterior
+    if (deltaX > touchThreshold) {
+      goToPrevious()
+    }
+    // Si el deslizamiento es hacia la izquierda (deltaX < -touchThreshold), ir a la imagen siguiente
+    else if (deltaX < -touchThreshold) {
+      goToNext()
+    }
+  }
+
+  // Añadir y remover listeners de eventos de teclado y toque
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [selectedImage, currentImageIndex, images]) // Added images to dependency array
+  }, [selectedImage, currentImageIndex, images]) // Asegurarse de que las dependencias sean correctas
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,7 +123,7 @@ export default function ProgramacionPage() {
         {/* Banner del clima */}
         <WeatherBanner />
 
-        {/* Header */}
+        {/* Header de la página de programación */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Programación de Eventos</h1>
@@ -106,28 +137,6 @@ export default function ProgramacionPage() {
             </Link>
           </Button>
         </div>
-
-        {/* Información destacada */}
-        {/*  <Card className="border-2 border-green-200 bg-green-50 mb-8">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-green-800 mb-2">
-                PROGRAMACIÓN COMPLETA FERIA FONGAL CAJAMARCA 2025
-              </h2>
-              <p className="text-green-700 font-semibold text-lg mb-4">FONGAL, ¡ES OTRA COSA!</p>
-              <div className="bg-white/50 rounded-lg p-4 max-w-2xl mx-auto">
-                <p className="text-green-800 font-medium">
-                  La 63.ª Feria FONGAL Cajamarca 2025 rinde homenaje a don Segundo Encarnación Muñoz Chuquiruna, ejemplo
-                  de esfuerzo, visión y amor por el campo.
-                </p>
-                <p className="text-green-700 text-sm mt-2">
-                  Su legado como ganadero y su aporte al desarrollo agropecuario de Cajamarca lo convierten en un
-                  referente que inspira a toda nuestra región.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
 
         {loading ? (
           <ImageGridSkeleton items={6} />
@@ -147,6 +156,7 @@ export default function ProgramacionPage() {
             {/* Grid de imágenes */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {images.map((image, index) => (
+                // La Card completa es clicable para abrir el modal de la imagen
                 <Card
                   key={image.id}
                   className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -217,7 +227,7 @@ export default function ProgramacionPage() {
                     <X className="h-6 w-6" />
                   </Button>
 
-                  {/* Botones de navegación */}
+                  {/* Botones de navegación (solo si hay más de una imagen) */}
                   {images.length > 1 && (
                     <>
                       <Button
@@ -240,10 +250,11 @@ export default function ProgramacionPage() {
                     </>
                   )}
 
-                  {/* Imagen principal */}
+                  {/* Imagen principal en el modal */}
                   {selectedImage && (
                     <div className="relative w-full h-full flex flex-col">
-                      <div className="flex-1 relative">
+                      {/* Contenedor de la imagen con detección de toque para deslizamiento */}
+                      <div className="flex-1 relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                         <Image
                           src={selectedImage.imageUrl || "/placeholder.svg"}
                           alt={selectedImage.title}
@@ -253,11 +264,14 @@ export default function ProgramacionPage() {
                         />
                       </div>
 
-                      {/* Información de la imagen */}
+                      {/* Información de la imagen en el modal */}
                       <div className="bg-black/80 text-white p-6 max-h-48 overflow-y-auto">
                         <div className="max-w-4xl mx-auto">
                           <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-2xl font-bold">{selectedImage.title}</h2>
+                            {/* DialogTitle para accesibilidad, usando el h2 como su hijo */}
+                            <DialogTitle asChild>
+                              <h2 className="text-2xl font-bold">{selectedImage.title}</h2>
+                            </DialogTitle>
                             <Badge className="bg-blue-600 text-white">
                               {currentImageIndex + 1} de {images.length}
                             </Badge>

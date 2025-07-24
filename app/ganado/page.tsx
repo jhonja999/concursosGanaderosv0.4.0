@@ -12,9 +12,11 @@ import { Breadcrumbs } from "@/components/shared/breadcrumbs"
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ImageGridSkeleton } from "@/components/shared/loading-skeleton"
-import { AlertTriangle, MilkIcon as Cow, RefreshCw, Plus } from "lucide-react"
+import { AlertTriangle, MilkIcon as Cow, RefreshCw, Plus, LayoutGrid, List } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { GanadoListTable } from "@/components/ganado/ganado-list-table"
 
 interface Ganado {
   id: string
@@ -41,6 +43,12 @@ interface Ganado {
   expositor?: {
     nombreCompleto: string
     empresa?: string
+  }
+  establo?: {
+    // Añadido
+    id: string
+    nombre: string
+    ubicacion?: string
   }
   contestCategory: {
     id: string
@@ -91,15 +99,16 @@ export default function GanadoPage() {
     categoria: "all",
     tipoAnimal: "all",
     sexo: "all",
-    estado: "all",
+    estado: "all", // "all", "destacado", "ganador", "remate"
     ordenar: "createdAt",
   })
   const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards") // 'cards' o 'list'
 
   const fetchGanado = useCallback(
-    async (page = 1) => {
+    async (page = pagination.page) => {
       try {
         setIsLoading(true)
         setError(null)
@@ -107,10 +116,18 @@ export default function GanadoPage() {
         const params = new URLSearchParams({
           page: page.toString(),
           limit: pagination.limit.toString(),
-          ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value && value !== "all")),
         })
 
-        const response = await fetch(`/api/ganado?${params}`)
+        // Añadir filtros dinámicamente
+        if (filters.search) params.append("search", filters.search)
+        if (filters.raza && filters.raza !== "all") params.append("raza", filters.raza)
+        if (filters.categoria && filters.categoria !== "all") params.append("categoria", filters.categoria)
+        if (filters.tipoAnimal && filters.tipoAnimal !== "all") params.append("tipoAnimal", filters.tipoAnimal)
+        if (filters.sexo && filters.sexo !== "all") params.append("sexo", filters.sexo)
+        if (filters.estado && filters.estado !== "all") params.append("estado", filters.estado) // La API /api/ganado ya maneja esto
+        if (filters.ordenar && filters.ordenar !== "createdAt") params.append("ordenar", filters.ordenar)
+
+        const response = await fetch(`/api/ganado?${params.toString()}`)
 
         if (!response.ok) {
           const errorData = await response.json()
@@ -130,10 +147,14 @@ export default function GanadoPage() {
         setIsLoading(false)
       }
     },
-    [filters, pagination.limit],
+    [filters, pagination.limit, pagination.page],
   )
 
   useEffect(() => {
+    // Cuando los filtros cambian (excepto la paginación), volvemos a la página 1
+    if (pagination.page !== 1) {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    }
     fetchGanado(1)
   }, [filters])
 
@@ -142,6 +163,7 @@ export default function GanadoPage() {
   }
 
   const handlePageChange = (page: number) => {
+    setPagination((prev) => ({ ...prev, page }))
     fetchGanado(page)
   }
 
@@ -152,6 +174,14 @@ export default function GanadoPage() {
   const breadcrumbItems = [
     { label: "Inicio", href: "/" },
     { label: "Ganado", href: "/ganado" },
+  ]
+
+  // Define las opciones de estado disponibles para la página general de ganado
+  const allowedStatesForFilters = [
+    { value: "all", label: "Todos los estados" },
+    { value: "destacado", label: "Destacado" },
+    { value: "ganador", label: "Ganador" },
+    { value: "remate", label: "En Remate" },
   ]
 
   if (error) {
@@ -177,7 +207,7 @@ export default function GanadoPage() {
       <Breadcrumbs items={breadcrumbItems} />
 
       <PageHeader title="Ganado" description="Gestiona y visualiza todo el ganado registrado">
-        <Button onClick={() => router.push("/admin/ganado/nuevo")}>
+        <Button onClick={() => router.push("/admin/concursos/[id]/participantes/nuevo/ganado")}>
           <Plus className="h-4 w-4 mr-2" />
           Agregar Ganado
         </Button>
@@ -189,6 +219,7 @@ export default function GanadoPage() {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           availableFilters={availableFilters}
+          allowedStates={allowedStatesForFilters} // Pasa las opciones de estado
           isLoading={isLoading}
         />
 
@@ -236,9 +267,34 @@ export default function GanadoPage() {
           </Card>
         </div>
 
-        {/* Lista de Ganado */}
+        {/* Selector de Vista */}
+        <div className="flex justify-end mb-4">
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value: "cards" | "list") => value && setViewMode(value)}
+            aria-label="Seleccionar vista"
+          >
+            <ToggleGroupItem
+              value="cards"
+              aria-label="Vista de tarjetas"
+              className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="list"
+              aria-label="Vista de lista"
+              className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+            >
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
+        {/* Contenido de las Vistas */}
         {isLoading ? (
-          <ImageGridSkeleton items={6} />
+          <ImageGridSkeleton items={viewMode === "cards" ? 6 : 3} />
         ) : ganado.length === 0 ? (
           <EmptyState
             icon={Cow}
@@ -261,15 +317,26 @@ export default function GanadoPage() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ganado.map((animal) => (
-                <GanadoCard key={animal.id} ganado={animal} onViewDetails={() => setSelectedGanado(animal)} />
-              ))}
-            </div>
+            {viewMode === "cards" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {ganado.map((animal) => (
+                  <GanadoCard key={animal.id} ganado={animal} onViewDetails={() => setSelectedGanado(animal)} />
+                ))}
+              </div>
+            )}
 
-            {/* Paginación */}
+            {viewMode === "list" && (
+              <GanadoListTable
+                ganado={ganado}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onViewDetails={setSelectedGanado}
+              />
+            )}
+
+            {/* Paginación - Mostrada debajo de ambas vistas */}
             {pagination.pages > 1 && (
-              <div className="flex justify-center items-center gap-2">
+              <div className="flex justify-center items-center gap-2 mt-8">
                 <Button
                   variant="outline"
                   disabled={pagination.page === 1}

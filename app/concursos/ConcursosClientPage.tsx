@@ -8,7 +8,6 @@ import Link from "next/link"
 import ContestCard from "@/components/ContestCard"
 import { Logo } from "@/components/shared/logo"
 import { Breadcrumbs } from "@/components/shared/breadcrumbs"
-import { WeatherBanner } from "@/components/shared/weather-banner"
 import { ContestFilters } from "@/components/shared/contest-filters"
 
 interface Contest {
@@ -194,7 +193,7 @@ export default function ConcursosClientPage() {
         <Breadcrumbs />
 
         {/* Banner del clima */}
-        <WeatherBanner />
+        {/* <WeatherBanner /> */}
 
         {contests.length === 0 ? (
           <div className="text-center py-16">

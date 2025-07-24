@@ -9,7 +9,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { Logo } from "@/components/shared/logo"
 import { Breadcrumbs } from "@/components/shared/breadcrumbs"
-import { WeatherBanner } from "@/components/shared/weather-banner"
 import { WinnerGridSkeleton } from "@/components/shared/skeletons"
 
 interface Winner {
@@ -121,7 +120,7 @@ export default function GanadoresPageClient() {
         </div>
         <div className="container mx-auto px-4 py-8 sm:py-12">
           <Breadcrumbs />
-          <WeatherBanner />
+          
           <WinnerGridSkeleton items={6} />
         </div>
       </div>
@@ -179,7 +178,7 @@ export default function GanadoresPageClient() {
         <Breadcrumbs />
 
         {/* Banner del clima */}
-        <WeatherBanner />
+        {/* <WeatherBanner /> */}
 
         {winners.length === 0 ? (
           <div className="text-center py-16">

@@ -182,7 +182,6 @@ export default async function HomePage() {
         {/* Componente Slider de Animales */}
         <AnimalSlider />
       </section>
-
       {/* Concursos Destacados */}
       <section className="w-full py-12 md:py-16 lg:py-24 bg-neutral-900 dark:bg-gray-950 text-center">
         <div className="container mx-auto px-4 md:px-6">
@@ -271,7 +270,7 @@ export default async function HomePage() {
       <GanadoSlider ganado={ganado} />
 
       {/* Subscription Plans Section */}
-      <section className="w-full py-12 md:py-16 lg:py-24 bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background">
+      {/* <section className="w-full py-12 md:py-16 lg:py-24 bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-12 md:mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-gray-800 dark:text-gray-100">
@@ -283,7 +282,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto">
-            {/* Plan Prueba Gratuita */}
+   
             <Card className="relative border-2 border-green-400 bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-green-600 text-white px-4 py-2 text-sm font-semibold shadow-lg">
@@ -335,8 +334,6 @@ export default async function HomePage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Plan Premium */}
             <Card className="relative border-2 border-emerald-500 shadow-lg scale-105 bg-gradient-to-br from-white to-green-50 dark:from-background dark:to-green-950/20 hover:shadow-xl transition-all duration-300 hover:scale-110">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow-lg">
@@ -399,7 +396,6 @@ export default async function HomePage() {
               </CardContent>
             </Card>
 
-            {/* Plan Personalizado */}
             <Card className="relative border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-300 hover:shadow-xl hover:scale-105 bg-white dark:bg-background">
               <CardHeader className="text-center pb-6 md:pb-8">
                 <CardTitle className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
@@ -456,7 +452,6 @@ export default async function HomePage() {
             </Card>
           </div>
 
-          {/* Proceso Simple */}
           <div className="mt-12 md:mt-16 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-6 md:p-8 max-w-5xl mx-auto">
             <h3 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">
               ¿Cómo funciona?
@@ -491,9 +486,14 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
+        </div>
+      </section> */}
 
-          {/* Badge de Confianza */}
-          <div className="mt-12 md:mt-16 text-center">
+      {/* Features Section */}
+
+      
+          
+          <div className="mt-1 md:mt-1 text-center">
             <div className="inline-flex flex-col sm:flex-row items-center gap-2 sm:gap-4 bg-white dark:bg-background rounded-full px-6 md:px-8 py-4 shadow-lg border border-emerald-100 dark:border-emerald-800 hover:shadow-xl hover:border-emerald-200 dark:hover:border-emerald-700 transition-all duration-300 hover:scale-105">
               <span className="text-emerald-600 dark:text-emerald-400 font-medium text-sm md:text-base">
                 ✅ Registro en tiempo real
@@ -506,10 +506,7 @@ export default async function HomePage() {
               </span>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
       <section className="w-full py-12 md:py-16 lg:py-24 bg-white dark:bg-background">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-12 md:mb-16">
