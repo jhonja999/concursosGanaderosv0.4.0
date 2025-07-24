@@ -352,7 +352,7 @@ export default function ParticipantesPage({
   // Loading inicial mientras resolvemos params o si no hay datos
   if (!slug || (loading && !data)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     )
@@ -360,15 +360,15 @@ export default function ParticipantesPage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="text-center py-12 max-w-md mx-auto">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Card className="text-center py-12 max-w-md mx-auto bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent>
-            <div className="text-gray-500 mb-4">
+            <div className="text-gray-500 dark:text-gray-400 mb-4">
               <div className="text-6xl mb-4">❌</div>
-              <h3 className="text-xl font-semibold mb-2">Error al cargar</h3>
-              <p>No se pudieron cargar los participantes del concurso.</p>
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">Error al cargar</h3>
+              <p className="text-gray-600 dark:text-gray-300">No se pudieron cargar los participantes del concurso.</p>
               <Button
-                className="mt-4"
+                className="mt-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
                 onClick={() => {
                   lastFetchUrlRef.current = ""
                   fetchParticipantes()
@@ -400,9 +400,9 @@ export default function ParticipantesPage({
   }))
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="ghost" size="sm" asChild>
@@ -415,9 +415,9 @@ export default function ParticipantesPage({
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Participantes</h1>
-              <p className="text-gray-600 mt-1">{contest.nombre}</p>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 font-baloo">Participantes</h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-1">{contest.nombre}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {pagination.total} {pagination.total === 1 ? "participante" : "participantes"} registrados
               </p>
             </div>
@@ -432,7 +432,7 @@ export default function ParticipantesPage({
       </div>
 
       {/* Filters */}
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <GanadoFilters
             filters={filters}
@@ -455,14 +455,14 @@ export default function ParticipantesPage({
           <ToggleGroupItem
             value="cards"
             aria-label="Vista de tarjetas"
-            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white dark:data-[state=on]:bg-blue-600"
           >
             <LayoutGrid className="h-4 w-4" />
           </ToggleGroupItem>
           <ToggleGroupItem
             value="list"
             aria-label="Vista de lista"
-            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+            className="data-[state=on]:bg-blue-500 data-[state=on]:text-white dark:data-[state=on]:bg-blue-600"
           >
             <List className="h-4 w-4" />
           </ToggleGroupItem>
@@ -478,14 +478,14 @@ export default function ParticipantesPage({
         )}
 
         {!loading && ganado.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="text-center py-12 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent>
-              <div className="text-gray-500 mb-4">
+              <div className="text-gray-500 dark:text-gray-400 mb-4">
                 <div className="text-6xl mb-4">🐄</div>
-                <h3 className="text-xl font-semibold mb-2">No hay participantes</h3>
-                <p>No se encontraron animales registrados con los filtros seleccionados.</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100 font-baloo">No hay participantes</h3>
+                <p className="text-gray-600 dark:text-gray-300">No se encontraron animales registrados con los filtros seleccionados.</p>
                 <Button
-                  className="mt-4"
+                  className="mt-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
                   onClick={() =>
                     handleFiltersChange({
                       ...filters,
@@ -538,6 +538,7 @@ export default function ParticipantesPage({
                     variant="outline"
                     disabled={pagination.page === 1}
                     onClick={() => handlePageChange(pagination.page - 1)}
+                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     Anterior
                   </Button>
@@ -551,6 +552,10 @@ export default function ParticipantesPage({
                           variant={pageNum === pagination.page ? "default" : "outline"}
                           size="sm"
                           onClick={() => handlePageChange(pageNum)}
+                          className={pageNum === pagination.page 
+                            ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white" 
+                            : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }
                         >
                           {pageNum}
                         </Button>
@@ -562,6 +567,7 @@ export default function ParticipantesPage({
                     variant="outline"
                     disabled={pagination.page === pagination.pages}
                     onClick={() => handlePageChange(pagination.page + 1)}
+                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     Siguiente
                   </Button>

@@ -1,8 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    // Await params before using
+    const resolvedParams = await params
+    
     const { searchParams } = new URL(request.url)
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "20")
@@ -12,8 +15,8 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     const tipoAnimal = searchParams.get("tipoAnimal")
     const sexo = searchParams.get("sexo")
     const enRemate = searchParams.get("enRemate")
-    const isDestacado = searchParams.get("isDestacado") // Nuevo
-    const isGanador = searchParams.get("isGanador") // Nuevo
+    const isDestacado = searchParams.get("isDestacado")
+    const isGanador = searchParams.get("isGanador")
     const sortBy = searchParams.get("sortBy") || "createdAt"
     const sortOrder = searchParams.get("sortOrder") || "desc"
 
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
     // Buscar el concurso por slug
     const contest = await prisma.contest.findUnique({
-      where: { slug: params.slug },
+      where: { slug: resolvedParams.slug },
       select: {
         id: true,
         nombre: true,
