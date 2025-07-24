@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
+import { prisma } from "@/lib/prisma"
 
 export async function GET(request: NextRequest) {
   try {
@@ -130,6 +130,13 @@ export async function GET(request: NextRequest) {
           },
           company: {
             select: { nombre: true },
+          },
+          establo: { // Incluir información del establo
+            select: {
+              id: true,
+              nombre: true,
+              ubicacion: true,
+            },
           },
         },
         orderBy,
@@ -300,6 +307,13 @@ export async function POST(request: NextRequest) {
         },
         company: {
           select: { nombre: true },
+        },
+        establo: { // Incluir información del establo
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+          },
         },
       },
     })

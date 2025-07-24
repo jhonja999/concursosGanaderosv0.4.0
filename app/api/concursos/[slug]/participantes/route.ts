@@ -12,6 +12,8 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     const tipoAnimal = searchParams.get("tipoAnimal")
     const sexo = searchParams.get("sexo")
     const enRemate = searchParams.get("enRemate")
+    const isDestacado = searchParams.get("isDestacado") // Nuevo
+    const isGanador = searchParams.get("isGanador") // Nuevo
     const sortBy = searchParams.get("sortBy") || "createdAt"
     const sortOrder = searchParams.get("sortOrder") || "desc"
 
@@ -66,8 +68,18 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       where.enRemate = enRemate === "true"
     }
 
+    // Nuevos filtros de estado
+    if (isDestacado && isDestacado !== "all") {
+      where.isDestacado = isDestacado === "true"
+    }
+
+    if (isGanador && isGanador !== "all") {
+      where.isGanador = isGanador === "true"
+    }
+
     // Construir ordenamiento
-    const orderBy: any = {}
+    let orderBy: any = {}
+    
     if (sortBy && sortBy !== "none") {
       if (sortBy === "createdAt") {
         orderBy.createdAt = sortOrder
@@ -114,6 +126,13 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
             select: {
               nombre: true,
               tipoPuntaje: true,
+            },
+          },
+          establo: { // Incluir información del establo
+            select: {
+              id: true,
+              nombre: true,
+              ubicacion: true,
             },
           },
         },

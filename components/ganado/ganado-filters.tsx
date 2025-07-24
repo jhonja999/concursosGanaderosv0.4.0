@@ -22,14 +22,32 @@ interface GanadoFiltersProps {
   }
   onFiltersChange: (filters: any) => void
   availableFilters?: {
-    categories: Array<{ id: string; nombre: string }>
+    categories: Array<{
+      id: string
+      nombre: string
+    }>
     breeds: string[]
     animalTypes: string[]
   }
+  allowedStates?: Array<{
+    value: string
+    label: string
+  }> // Nueva prop para estados permitidos
   isLoading?: boolean
 }
 
-export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLoading = false }: GanadoFiltersProps) {
+export function GanadoFilters({
+  filters,
+  onFiltersChange,
+  availableFilters,
+  allowedStates = [ // Valores por defecto si no se especifican
+    { value: "all", label: "Todos los estados" },
+    { value: "destacado", label: "Destacado" },
+    { value: "ganador", label: "Ganador" },
+    { value: "remate", label: "En Remate" },
+  ],
+  isLoading = false,
+}: GanadoFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [localFilters, setLocalFilters] = useState(filters)
 
@@ -65,6 +83,7 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
     if (localFilters.tipoAnimal && localFilters.tipoAnimal !== "all") count++
     if (localFilters.sexo && localFilters.sexo !== "all") count++
     if (localFilters.estado && localFilters.estado !== "all") count++
+    // No contamos 'ordenar' como un filtro activo de contenido
     return count
   }
 
@@ -219,7 +238,7 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
                 </Select>
               </div>
 
-              {/* Estado */}
+              {/* Estado - Usa la nueva prop `allowedStates` */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Estado</Label>
                 <Select
@@ -231,10 +250,11 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="destacado">Destacado</SelectItem>
-                    <SelectItem value="ganador">Ganador</SelectItem>
-                    <SelectItem value="remate">En Remate</SelectItem>
+                    {allowedStates.map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -256,7 +276,7 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
                     <SelectItem value="fecha">Fecha de nacimiento</SelectItem>
                     <SelectItem value="peso">Peso</SelectItem>
                     <SelectItem value="puntaje">Puntaje</SelectItem>
-                    <SelectItem value="ficha">Número de ficha</SelectItem>
+                    {/* <SelectItem value="ficha">Número de ficha</SelectItem> // No disponible en todas las APIs */}
                   </SelectContent>
                 </Select>
               </div>
@@ -321,7 +341,7 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
                   )}
                   {localFilters.sexo && localFilters.sexo !== "all" && (
                     <Badge variant="secondary" className="text-xs">
-                      Sexo: {localFilters.sexo}
+                      Sexo: {localFilters.sexo === "MACHO" ? "Macho" : "Hembra"}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -334,7 +354,7 @@ export function GanadoFilters({ filters, onFiltersChange, availableFilters, isLo
                   )}
                   {localFilters.estado && localFilters.estado !== "all" && (
                     <Badge variant="secondary" className="text-xs">
-                      Estado: {localFilters.estado}
+                      Estado: {allowedStates.find(s => s.value === localFilters.estado)?.label || localFilters.estado}
                       <Button
                         variant="ghost"
                         size="sm"
