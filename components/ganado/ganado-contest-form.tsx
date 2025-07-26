@@ -14,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, X, AlertTriangle, Crown, Trophy, Star, Clock, Heart, Zap, Building2, Plus } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, X, AlertTriangle, Crown, Trophy, Star, Clock, Heart, Zap, Building2, Plus, Award } from "lucide-react"
 import { CloudinaryUpload } from "@/components/shared/cloudinary-upload"
 
 // Tipos de animales y sus razas
@@ -100,6 +101,25 @@ const ESTADOS = [
   { value: "rechazado", label: "Rechazado", color: "bg-red-500" },
 ]
 
+// Premios predefinidos comunes (opcional, para autocompletar)
+const PREMIOS_COMUNES = [
+  "Gran Campeón",
+  "Gran Campeona", 
+  "Campeón de Categoría",
+  "Campeona de Categoría",
+  "Campeón Junior",
+  "Campeona Junior",
+  "Campeón Senior",
+  "Campeona Senior",
+  "Primer Lugar",
+  "Segundo Lugar",
+  "Tercer Lugar",
+  "Mejor Condición Corporal",
+  "Mejor Conformación",
+  "Premio Especial",
+  "Mención de Honor"
+]
+
 interface GanadoFormData {
   // Información básica del animal
   nombre: string
@@ -154,6 +174,13 @@ interface GanadoFormData {
   posicion?: number
   calificacion?: string
 
+  // Premios obtenidos - nuevo campo
+  premiosObtenidos: string[]
+  premiosObtenidosInput?: string // Campo auxiliar para el input
+
+  // Ganador
+  isGanador: boolean
+
   // Archivos
   imagenes: string[]
   documentos: string[]
@@ -163,7 +190,7 @@ interface GanadoFormProps {
   contestId: string
   initialData?: any
   onSubmit: (data: GanadoFormData) => Promise<void>
-  onSubmitSuccess: () => void // Added onSubmitSuccess prop
+  onSubmitSuccess: () => void
   isLoading?: boolean
 }
 
@@ -179,7 +206,11 @@ export function GanadoContestForm({
   const [contest, setContest] = useState<any>(null)
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [loadingEstablos, setLoadingEstablos] = useState(true)
-  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | string | "">("bovino")
+  const [selectedTipoAnimal, setSelectedTipoAnimal] = useState<keyof typeof TIPOS_ANIMALES | string | "">(
+    initialData?.tipoAnimal && Object.keys(TIPOS_ANIMALES).includes(initialData.tipoAnimal) 
+      ? initialData.tipoAnimal 
+      : "bovino"
+  )
   const [showOtraRazaInput, setShowOtraRazaInput] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [imagenes, setImagenes] = useState<string[]>(initialData?.imagenes || [])
@@ -187,6 +218,7 @@ export function GanadoContestForm({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showNewEstablo, setShowNewEstablo] = useState(false)
+  const [premiosArray, setPremiosArray] = useState<string[]>(initialData?.premiosObtenidos || [])
 
   const {
     register,
@@ -202,12 +234,24 @@ export function GanadoContestForm({
       estado: "borrador",
       enRemate: false,
       isDestacado: false,
+      isGanador: false,
       imagenes: [],
       documentos: [],
+      premiosObtenidos: [],
+      premiosObtenidosInput: "",
       puntaje: undefined,
       posicion: undefined,
       calificacion: undefined,
-      ...initialData,
+      tipoAnimal: "bovino",
+      sexo: "MACHO",
+      // Asegurar que los campos requeridos tengan valores por defecto
+      nombre: "",
+      numeroFicha: "",
+      raza: "",
+      propietarioNombre: "",
+      contestCategoryId: "",
+      // Sobrescribir con initialData si existe
+      ...(initialData || {}),
     },
     mode: "onChange",
   })
@@ -269,17 +313,36 @@ export function GanadoContestForm({
     fetchEstablos()
   }, [contestId])
 
+  // Inicializar datos existentes
   useEffect(() => {
+    if (!initialData) return
+
+    console.log("Initializing form with data:", initialData)
+
+    // Inicializar tipo de animal
     if (initialData?.tipoAnimal) {
       const isKnownType = Object.keys(TIPOS_ANIMALES).includes(initialData.tipoAnimal)
       if (isKnownType) {
         setSelectedTipoAnimal(initialData.tipoAnimal)
+        setValue("tipoAnimal", initialData.tipoAnimal, { shouldValidate: false })
       } else {
         setSelectedTipoAnimal("otro")
+        setValue("tipoAnimal", "otro", { shouldValidate: false })
         setValue("otroTipoAnimal", initialData.tipoAnimal, { shouldDirty: true })
       }
+    } else {
+      setValue("tipoAnimal", "bovino", { shouldValidate: false })
+      setSelectedTipoAnimal("bovino")
     }
 
+    // Inicializar sexo
+    if (initialData?.sexo && ["MACHO", "HEMBRA"].includes(initialData.sexo)) {
+      setValue("sexo", initialData.sexo, { shouldValidate: false })
+    } else {
+      setValue("sexo", "MACHO", { shouldValidate: false })
+    }
+
+    // Inicializar raza
     if (initialData?.raza) {
       const currentRazas =
         initialData?.tipoAnimal && TIPOS_ANIMALES[initialData.tipoAnimal as keyof typeof TIPOS_ANIMALES]
@@ -289,10 +352,18 @@ export function GanadoContestForm({
         setValue("raza", "Otra", { shouldDirty: true })
         setValue("otraRaza", initialData.raza, { shouldDirty: true })
         setShowOtraRazaInput(true)
+      } else {
+        setValue("raza", initialData.raza, { shouldValidate: false })
       }
     }
 
-    // Inicializar imágenes si existen
+    // Inicializar otros campos requeridos
+    if (initialData?.nombre) setValue("nombre", initialData.nombre, { shouldValidate: false })
+    if (initialData?.numeroFicha) setValue("numeroFicha", initialData.numeroFicha, { shouldValidate: false })
+    if (initialData?.propietarioNombre) setValue("propietarioNombre", initialData.propietarioNombre, { shouldValidate: false })
+    if (initialData?.contestCategoryId) setValue("contestCategoryId", initialData.contestCategoryId, { shouldValidate: false })
+
+    // Inicializar imágenes
     if (initialData?.imagenUrl) {
       const initialImages = [initialData.imagenUrl]
       setImagenes(initialImages)
@@ -302,11 +373,29 @@ export function GanadoContestForm({
       setValue("imagenes", initialData.imagenes, { shouldValidate: false, shouldDirty: false })
     }
 
-    // Inicializar documentos si existen
+    // Inicializar documentos
     if (initialData?.documentos && Array.isArray(initialData.documentos)) {
       setDocumentos(initialData.documentos)
       setValue("documentos", initialData.documentos, { shouldValidate: false, shouldDirty: false })
     }
+
+    // Inicializar premios obtenidos
+    if (initialData?.premiosObtenidos && Array.isArray(initialData.premiosObtenidos)) {
+      setPremiosArray(initialData.premiosObtenidos)
+      setValue("premiosObtenidos", initialData.premiosObtenidos, { shouldValidate: false, shouldDirty: false })
+      setValue("premiosObtenidosInput", initialData.premiosObtenidos.join(", "), { shouldValidate: false, shouldDirty: false })
+    } else if (initialData?.premiosObtenidosInput) {
+      // Si viene como string separado por comas
+      const premiosFromInput = initialData.premiosObtenidosInput
+        .split(",")
+        .map((premio: string) => premio.trim())
+        .filter((premio: string) => premio.length > 0)
+      setPremiosArray(premiosFromInput)
+      setValue("premiosObtenidos", premiosFromInput, { shouldValidate: false, shouldDirty: false })
+      setValue("premiosObtenidosInput", initialData.premiosObtenidosInput, { shouldValidate: false, shouldDirty: false })
+    }
+
+    console.log("Form initialized successfully")
   }, [initialData, setValue])
 
   // Sincronizar selectedTipoAnimal con el valor del formulario
@@ -321,6 +410,37 @@ export function GanadoContestForm({
     setShowOtraRazaInput(watchedValues.raza === "Otra")
   }, [watchedValues.raza])
 
+  // Manejar cambios en el input de premios
+  const handlePremiosInputChange = useCallback((value: string) => {
+    setValue("premiosObtenidosInput", value, { shouldDirty: true })
+    
+    // Convertir string separado por comas a array, eliminando espacios extra
+    const premiosArray = value
+      .split(",")
+      .map(premio => premio.trim())
+      .filter(premio => premio.length > 0)
+    
+    setPremiosArray(premiosArray)
+    setValue("premiosObtenidos", premiosArray, { shouldValidate: false, shouldDirty: true })
+    setHasUnsavedChanges(true)
+  }, [setValue])
+
+  // Agregar premio desde lista predefinida
+  const addPremioFromList = useCallback((premio: string) => {
+    const currentInput = getValues("premiosObtenidosInput") || ""
+    const newInput = currentInput ? `${currentInput}, ${premio}` : premio
+    handlePremiosInputChange(newInput)
+  }, [getValues, handlePremiosInputChange])
+
+  // Remover premio específico
+  const removePremio = useCallback((index: number) => {
+    const newPremios = premiosArray.filter((_, i) => i !== index)
+    setPremiosArray(newPremios)
+    setValue("premiosObtenidos", newPremios, { shouldValidate: false, shouldDirty: true })
+    setValue("premiosObtenidosInput", newPremios.join(", "), { shouldValidate: false, shouldDirty: true })
+    setHasUnsavedChanges(true)
+  }, [premiosArray, setValue])
+
   // Validaciones específicas por tipo de animal
   const validateAnimal = useCallback(() => {
     const errors: string[] = []
@@ -331,16 +451,16 @@ export function GanadoContestForm({
 
       switch (watchedValues.tipoAnimal) {
         case "bovino":
-          if (edadMeses < 1) errors.push("Los bovinos deben tener mínimo 1 meses de edad")
+          if (edadMeses < 1) errors.push("Los bovinos deben tener mínimo 1 mes de edad")
           break
         case "ovino":
-          if (edadMeses < 1) errors.push("Los ovinos deben tener mínimo 1 meses de edad")
+          if (edadMeses < 1) errors.push("Los ovinos deben tener mínimo 1 mes de edad")
           break
         case "equino":
-          if (edadMeses < 1) errors.push("Los equinos deben tener mínimo 1 meses de edad")
+          if (edadMeses < 1) errors.push("Los equinos deben tener mínimo 1 mes de edad")
           break
         case "cuy":
-          if (edadMeses < 1 || edadMeses > 8) errors.push("Los cuyes deben tener entre 1 meses de edad")
+          if (edadMeses < 1 || edadMeses > 8) errors.push("Los cuyes deben tener entre 1 y 8 meses de edad")
           break
       }
     }
@@ -401,13 +521,20 @@ export function GanadoContestForm({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  // Detectar cambios en el formulario
+  // Detectar cambios en el formulario (solo después de la inicialización)
   useEffect(() => {
-    const subscription = watch(() => {
-      setHasUnsavedChanges(true)
-    })
-    return () => subscription.unsubscribe()
-  }, [watch])
+    // Solo empezar a detectar cambios después de que se haya inicializado el formulario
+    const timer = setTimeout(() => {
+      const subscription = watch(() => {
+        if (!isSubmitting) { // No marcar cambios durante el envío
+          setHasUnsavedChanges(true)
+        }
+      })
+      return () => subscription.unsubscribe()
+    }, 2000) // Esperar 2 segundos después de la inicialización
+
+    return () => clearTimeout(timer)
+  }, [watch, isSubmitting])
 
   const onFormSubmit = async (data: GanadoFormData, event?: React.FormEvent) => {
     // Prevent default form submission
@@ -433,6 +560,7 @@ export function GanadoContestForm({
       ...data,
       imagenes,
       documentos,
+      premiosObtenidos: premiosArray, // Usar el array de premios actualizado
     }
 
     if (formData.tipoAnimal === "otro") {
@@ -442,16 +570,58 @@ export function GanadoContestForm({
       formData.raza = formData.otraRaza || ""
     }
 
+    // Limpiar campos auxiliares y valores undefined/null problemáticos
     delete formData.otroTipoAnimal
     delete formData.otraRaza
+    delete formData.premiosObtenidosInput // Remover campo auxiliar
+
+    // Convertir valores undefined a null para evitar problemas de serialización
+    Object.keys(formData).forEach(key => {
+      const formDataAny = formData as any; // Type assertion para acceso dinámico
+      if (formDataAny[key] === undefined) {
+        // Para campos requeridos, asignar valores por defecto
+        if (key === 'sexo') {
+          formDataAny[key] = 'MACHO'
+        } else if (key === 'tipoAnimal') {
+          formDataAny[key] = 'bovino'
+        } else {
+          formDataAny[key] = null
+        }
+      }
+      // Convertir strings vacíos a null para campos opcionales
+      if (typeof formDataAny[key] === 'string' && formDataAny[key].trim() === '' && 
+          !['nombre', 'numeroFicha', 'tipoAnimal', 'raza', 'sexo', 'propietarioNombre', 'contestCategoryId'].includes(key)) {
+        formDataAny[key] = null
+      }
+    })
+
+    // Validar campos requeridos antes del envío
+    const requiredFieldsValidation = [
+      { field: 'nombre', value: formData.nombre },
+      { field: 'numeroFicha', value: formData.numeroFicha },
+      { field: 'tipoAnimal', value: formData.tipoAnimal },
+      { field: 'raza', value: formData.raza },
+      { field: 'sexo', value: formData.sexo },
+      { field: 'propietarioNombre', value: formData.propietarioNombre },
+      { field: 'contestCategoryId', value: formData.contestCategoryId },
+    ]
+
+    const missingRequiredFields = requiredFieldsValidation.filter(
+      ({ value }) => !value || (typeof value === 'string' && value.trim() === '')
+    )
+
+    if (missingRequiredFields.length > 0) {
+      console.error('Missing required fields:', missingRequiredFields)
+      return
+    }
 
     console.log("Final form data:", formData)
 
     setIsSubmitting(true)
     try {
       await onSubmit(formData)
-      setHasUnsavedChanges(false) // Reset flag after successful save
-      onSubmitSuccess() // Call onSubmitSuccess after successful submission
+      setHasUnsavedChanges(false)
+      onSubmitSuccess()
     } catch (error) {
       console.error("Error submitting form:", error)
     } finally {
@@ -459,7 +629,7 @@ export function GanadoContestForm({
     }
   }
 
-  // Usar useCallback para evitar re-renders innecesarios
+  // Manejar carga de imágenes
   const handleImageUpload = useCallback(
     (url: string) => {
       setImagenes((prev) => {
@@ -546,7 +716,11 @@ export function GanadoContestForm({
               min={contest.puntajeMinimo || 0}
               max={contest.puntajeMaximo || 100}
               {...register("puntaje", {
-                valueAsNumber: true,
+                setValueAs: (value) => {
+                  if (!value || value === '') return undefined;
+                  const num = Number(value);
+                  return isNaN(num) ? undefined : num;
+                },
                 min: {
                   value: contest.puntajeMinimo || 0,
                   message: `El puntaje debe ser mayor o igual a ${contest.puntajeMinimo || 0}`,
@@ -579,7 +753,11 @@ export function GanadoContestForm({
               min="1"
               max={contest.posicionesDisponibles || 10}
               {...register("posicion", {
-                valueAsNumber: true,
+                setValueAs: (value) => {
+                  if (!value || value === '') return undefined;
+                  const num = Number(value);
+                  return isNaN(num) ? undefined : num;
+                },
                 min: { value: 1, message: "La posición debe ser mayor a 0" },
                 max: {
                   value: contest.posicionesDisponibles || 10,
@@ -650,8 +828,9 @@ export function GanadoContestForm({
       className="space-y-8"
     >
       <Tabs defaultValue="basica" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basica">Información Básica</TabsTrigger>
+          <TabsTrigger value="premios">Premios y Puntuación</TabsTrigger>
           <TabsTrigger value="actores">Propietario/Expositor</TabsTrigger>
           <TabsTrigger value="establo">Establo</TabsTrigger>
           <TabsTrigger value="categoria">Categoría</TabsTrigger>
@@ -816,6 +995,7 @@ export function GanadoContestForm({
                     name="sexo"
                     control={control}
                     rules={{ required: "El sexo es requerido" }}
+                    defaultValue="MACHO"
                     render={({ field }) => (
                       <Select value={field.value || "MACHO"} onValueChange={field.onChange}>
                         <SelectTrigger>
@@ -851,16 +1031,17 @@ export function GanadoContestForm({
                     type="number"
                     step="0.1"
                     {...register("peso", {
-                      valueAsNumber: true,
+                      setValueAs: (value) => {
+                        if (!value || value === '') return undefined;
+                        const num = Number(value);
+                        return isNaN(num) ? undefined : num;
+                      },
                       min: { value: 0.1, message: "El peso debe ser mayor a 0" },
                     })}
                     placeholder="Ej: 450.5 (opcional)"
                   />
                   <p className="text-xs text-muted-foreground">Opcional - peso actual del animal</p>
                 </div>
-
-                {/* Campos de puntaje dinámicos según el tipo de concurso */}
-                {renderScoreFields()}
               </div>
 
               {/* Validaciones específicas */}
@@ -920,6 +1101,112 @@ export function GanadoContestForm({
                     rows={2}
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Nueva pestaña: Premios y Puntuación */}
+        <TabsContent value="premios" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Premios Obtenidos
+              </CardTitle>
+              <CardDescription>
+                Registre los premios obtenidos por el animal. Puede separar múltiples premios con comas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Input para premios */}
+              <div className="space-y-2">
+                <Label htmlFor="premiosObtenidosInput">Premios Obtenidos</Label>
+                <Textarea
+                  id="premiosObtenidosInput"
+                  placeholder="Ej: Gran Campeón, Mejor Condición Corporal, Primer Lugar"
+                  value={watchedValues.premiosObtenidosInput || ""}
+                  onChange={(e) => handlePremiosInputChange(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Separe múltiples premios con comas. Ej: "Gran Campeón, Mejor Condición Corporal"
+                </p>
+              </div>
+
+              {/* Premios comunes para agregar rápidamente */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Premios Comunes (Click para agregar)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PREMIOS_COMUNES.map((premio) => (
+                    <Badge
+                      key={premio}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => addPremioFromList(premio)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      {premio}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lista de premios actuales */}
+              {premiosArray.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Premios Registrados</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {premiosArray.map((premio, index) => (
+                      <Badge key={index} variant="default" className="relative pr-8">
+                        {premio}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute -top-1 -right-1 h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                          onClick={() => removePremio(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Campos de puntaje dinámicos según el tipo de concurso */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium">Puntuación del Concurso</h4>
+                {renderScoreFields()}
+              </div>
+
+              <Separator />
+
+              {/* Campo de ganador */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    name="isGanador"
+                    control={control}
+                    render={({ field }) => (
+                      <Switch 
+                        id="isGanador" 
+                        checked={field.value || false} 
+                        onCheckedChange={field.onChange} 
+                      />
+                    )}
+                  />
+                  <Label htmlFor="isGanador" className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Marcar como Ganador
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Active esta opción si el animal obtuvo algún premio o posición destacada
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -1058,9 +1345,9 @@ export function GanadoContestForm({
                       control={control}
                       render={({ field }) => (
                         <Select
-                          value={field.value || "null-establo-option"} // Set default value for Select to a non-empty string
+                          value={field.value || "null-establo-option"}
                           onValueChange={(value) => {
-                            field.onChange(value === "null-establo-option" ? null : value) // Convert special string back to null
+                            field.onChange(value === "null-establo-option" ? null : value)
                           }}
                           disabled={loadingEstablos}
                         >
@@ -1070,8 +1357,7 @@ export function GanadoContestForm({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="null-establo-option">Sin establo</SelectItem>{" "}
-                            {/* Changed value from "" to "null-establo-option" */}
+                            <SelectItem value="null-establo-option">Sin establo</SelectItem>
                             {establos.map((establo) => (
                               <SelectItem key={establo.id} value={establo.id}>
                                 {establo.nombre}
@@ -1230,7 +1516,13 @@ export function GanadoContestForm({
                       id="precioBaseRemate"
                       type="number"
                       step="0.01"
-                      {...register("precioBaseRemate", { valueAsNumber: true })}
+                      {...register("precioBaseRemate", { 
+                        setValueAs: (value) => {
+                          if (!value || value === '') return undefined;
+                          const num = Number(value);
+                          return isNaN(num) ? undefined : num;
+                        }
+                      })}
                       placeholder="Precio en pesos colombianos"
                     />
                   </div>
@@ -1336,8 +1628,6 @@ export function GanadoContestForm({
       {/* Botones de acción */}
       <div className="flex justify-end space-x-4 pt-6 border-t">
         <Button type="button" variant="outline" onClick={onSubmitSuccess}>
-          {" "}
-          {/* Changed onCancel to onSubmitSuccess */}
           Cancelar
         </Button>
         <Button

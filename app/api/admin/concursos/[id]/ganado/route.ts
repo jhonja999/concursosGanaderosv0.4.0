@@ -106,6 +106,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const data = await request.json()
+    console.log("Received data in API:", JSON.stringify(data, null, 2))
 
     const requiredFields = [
       { field: "nombre", message: "El nombre del animal es requerido" },
@@ -123,7 +124,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
     if (missingFields.length > 0) {
       const errorMessage = missingFields.map(({ message }) => message).join(", ")
+      console.log("Missing fields:", missingFields)
+      console.log("Error message:", errorMessage)
       return NextResponse.json({ error: errorMessage }, { status: 400 })
+    }
+
+    // Validar valores específicos
+    if (!["MACHO", "HEMBRA"].includes(data.sexo)) {
+      console.log("Invalid sexo value:", data.sexo)
+      return NextResponse.json({ error: "El sexo debe ser MACHO o HEMBRA" }, { status: 400 })
     }
 
     const contest = await prisma.contest.findUnique({
@@ -144,8 +153,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     })
 
     if (!category) {
+      console.log("Category not found:", data.contestCategoryId)
       return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 })
     }
+
+    console.log("Category found:", category.nombre)
 
     const existingGanado = await prisma.ganado.findFirst({
       where: {
@@ -161,6 +173,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       )
     }
 
+    // Upsert propietario
     const propietario = await prisma.propietario.upsert({
       where: {
         companyId_nombreCompleto: {
@@ -184,6 +197,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       },
     })
 
+    // Upsert expositor (opcional)
     let expositor = null
     if (data.expositorNombre && data.expositorNombre.trim() !== "") {
       expositor = await prisma.expositor.upsert({
@@ -212,6 +226,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       })
     }
 
+    // Crear nuevo establo si se especifica
     let establoId = data.establoId || null
     if (data.nuevoEstabloNombre && data.nuevoEstabloNombre.trim() !== "") {
       const newEstablo = await prisma.establo.create({
@@ -225,24 +240,21 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       establoId = newEstablo.id
     }
 
-    const finalTipoAnimal = data.tipoAnimal
-    const finalRaza = data.raza
-
+    // Preparar datos del ganado
     const ganadoData: any = {
       nombre: data.nombre,
       numeroFicha: data.numeroFicha,
-      tipoAnimal: finalTipoAnimal,
-      raza: finalRaza,
+      tipoAnimal: data.tipoAnimal,
+      raza: data.raza,
       sexo: data.sexo,
       descripcion: data.descripcion || null,
       marcasDistintivas: data.marcasDistintivas || null,
       padre: data.padre || null,
       madre: data.madre || null,
       lineaGenetica: data.lineaGenetica || null,
-      enRemate: data.enRemate || false,
-      precioBaseRemate: data.precioBaseRemate ? Number.parseFloat(data.precioBaseRemate) : null,
-      isDestacado: data.isDestacado || false,
-      imagenUrl: data.imagenes?.[0] || null,
+      enRemate: Boolean(data.enRemate || false),
+      isDestacado: Boolean(data.isDestacado || false),
+      isGanador: Boolean(data.isGanador || false),
       contestId: contestId,
       contestCategoryId: data.contestCategoryId,
       propietarioId: propietario.id,
@@ -252,15 +264,58 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       establoId: establoId,
     }
 
+    // Manejar campos opcionales numéricos
     if (data.fechaNacimiento) {
       ganadoData.fechaNacimiento = new Date(data.fechaNacimiento)
     }
-    if (data.peso && !isNaN(Number.parseFloat(data.peso))) {
-      ganadoData.pesoKg = Number.parseFloat(data.peso)
+
+    if (data.peso !== undefined && data.peso !== null && data.peso !== "") {
+      const peso = Number(data.peso)
+      if (!isNaN(peso) && peso > 0) {
+        ganadoData.pesoKg = peso
+      }
     }
-    if (data.puntaje !== undefined && data.puntaje !== null && !isNaN(Number.parseFloat(data.puntaje))) {
-      ganadoData.puntaje = Number.parseFloat(data.puntaje)
+
+    if (data.puntaje !== undefined && data.puntaje !== null && data.puntaje !== "") {
+      const puntaje = Number(data.puntaje)
+      if (!isNaN(puntaje)) {
+        ganadoData.puntaje = puntaje
+      }
     }
+
+    if (data.posicion !== undefined && data.posicion !== null && data.posicion !== "") {
+      const posicion = Number(data.posicion)
+      if (!isNaN(posicion) && posicion > 0) {
+        ganadoData.posicion = posicion
+      }
+    }
+
+    if (data.calificacion && data.calificacion.trim() !== "") {
+      ganadoData.calificacion = data.calificacion
+    }
+
+    if (data.precioBaseRemate !== undefined && data.precioBaseRemate !== null && data.precioBaseRemate !== "") {
+      const precio = Number(data.precioBaseRemate)
+      if (!isNaN(precio) && precio > 0) {
+        ganadoData.precioBaseRemate = precio
+      }
+    }
+
+    // Manejar premios obtenidos
+    if (data.premiosObtenidos && Array.isArray(data.premiosObtenidos)) {
+      ganadoData.premiosObtenidos = data.premiosObtenidos.filter((premio: string) => 
+        typeof premio === 'string' && premio.trim() !== ''
+      )
+    } else {
+      ganadoData.premiosObtenidos = []
+    }
+
+    // Manejar imágenes
+    if (data.imagenes && Array.isArray(data.imagenes) && data.imagenes.length > 0) {
+      ganadoData.imagenUrl = data.imagenes[0]
+    }
+
+    console.log("Final ganado data before creation:", JSON.stringify(ganadoData, null, 2))
 
     const ganado = await prisma.ganado.create({
       data: ganadoData,
@@ -275,21 +330,34 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       },
     })
 
+    console.log("Ganado created successfully:", ganado.id)
+
+    // Actualizar contador de participantes
     await prisma.contest.update({
       where: { id: contestId },
       data: { participantCount: { increment: 1 } },
     })
 
     return NextResponse.json(ganado, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating ganado:", error)
-    if (error?.code === "P2002") {
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      code: (error as any)?.code || 'Unknown code',
+    })
+
+    if ((error as any)?.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un animal con este número de ficha en el concurso" },
         { status: 400 },
       )
     }
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+
+    return NextResponse.json({ 
+      error: "Error interno del servidor",
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
+    }, { status: 500 })
   }
 }
 

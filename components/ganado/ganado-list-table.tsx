@@ -23,6 +23,7 @@ interface Ganado {
   premiosObtenidos: string[]
   numeroFicha?: string
   puntaje?: number
+  posicion?: number
   createdAt: Date
   propietario: {
     nombreCompleto: string
@@ -103,16 +104,16 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
         </TableHeader>
         <TableBody>
           {ganado.map((animal) => (
-            <TableRow 
+            <TableRow
               key={animal.id}
               className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
               <TableCell className="font-medium">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-600">
-                    <AvatarImage 
-                      src={animal.imagenUrl || "/placeholder.svg?height=100&width=100&query=animal"} 
-                      alt={animal.nombre} 
+                    <AvatarImage
+                      src={animal.imagenUrl || "/placeholder.svg?height=100&width=100&query=animal"}
+                      alt={animal.nombre}
                     />
                     <AvatarFallback className="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-semibold">
                       {animal.nombre.substring(0, 2).toUpperCase()}
@@ -127,18 +128,24 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
                 </div>
               </TableCell>
               <TableCell className="text-nowrap">
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className="flex items-center gap-1 w-fit border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
                 >
                   <Tag className="h-3 w-3" />
                   {animal.numeroFicha || "N/A"}
                 </Badge>
               </TableCell>
-              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">{animal.contestCategory.nombre}</TableCell>
+              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">
+                {animal.contestCategory.nombre}
+              </TableCell>
               <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">{animal.raza}</TableCell>
-              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">{animal.propietario.nombreCompleto}</TableCell>
-              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">{animal.expositor?.nombreCompleto || "N/A"}</TableCell>
+              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">
+                {animal.propietario.nombreCompleto}
+              </TableCell>
+              <TableCell className="text-nowrap text-gray-900 dark:text-gray-100">
+                {animal.expositor?.nombreCompleto || "N/A"}
+              </TableCell>
               <TableCell className="text-nowrap">
                 <div className="flex items-center gap-1">
                   <Building2 className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
@@ -148,35 +155,71 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
               <TableCell className="text-nowrap">
                 <div className="flex flex-col">
                   <span className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
-                    <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" /> 
+                    <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     {calculateAge(animal.fechaNacimiento)}
                   </span>
                   <span className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
-                    <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" /> 
+                    <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     {animal.pesoKg} kg
                   </span>
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-1 w-24">
+                <div className="flex flex-wrap gap-1 w-32">
                   {animal.enRemate && (
-                    <Badge className="bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700 border-red-500 dark:border-red-600">
+                    <Badge className="bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700 border-red-500 dark:border-red-600 text-xs">
                       Remate
                     </Badge>
                   )}
                   {animal.isDestacado && (
-                    <Badge className="bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-700 border-yellow-500 dark:border-yellow-600">
+                    <Badge className="bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-700 border-yellow-500 dark:border-yellow-600 text-xs">
                       Destacado
                     </Badge>
                   )}
                   {animal.isGanador && (
-                    <Badge className="bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 border-blue-500 dark:border-blue-600">
+                    <Badge className="bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 border-blue-500 dark:border-blue-600 text-xs">
                       Ganador
                     </Badge>
                   )}
+                  {animal.premiosObtenidos && animal.premiosObtenidos.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {animal.premiosObtenidos.slice(0, 2).map((premio, idx) => {
+                        const isGrandChampion =
+                          premio.toLowerCase().includes("gran campeón") || premio.toLowerCase().includes("gran campeon")
+                        const isJuniorSenior =
+                          premio.toLowerCase().includes("junior") || premio.toLowerCase().includes("senior")
+
+                        return (
+                          <Badge
+                            key={idx}
+                            className={`text-xs ${
+                              isGrandChampion
+                                ? "bg-purple-600 dark:bg-purple-700 text-white hover:bg-purple-700 dark:hover:bg-purple-800 border-purple-600 dark:border-purple-700"
+                                : isJuniorSenior
+                                  ? "bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800 border-indigo-600 dark:border-indigo-700"
+                                  : "bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 border-emerald-600 dark:border-emerald-700"
+                            }`}
+                            title={premio}
+                          >
+                            {premio.length > 15 ? `${premio.substring(0, 12)}...` : premio}
+                          </Badge>
+                        )
+                      })}
+                      {animal.premiosObtenidos.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{animal.premiosObtenidos.length - 2}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   {animal.puntaje && (
-                    <Badge className="bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-700 border-emerald-500 dark:border-emerald-600">
+                    <Badge className="bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 border-green-500 dark:border-green-600 text-xs">
                       {animal.puntaje} pts
+                    </Badge>
+                  )}
+                  {animal.posicion && (
+                    <Badge className="bg-orange-500 dark:bg-orange-600 text-white hover:bg-orange-600 dark:hover:bg-orange-700 border-orange-500 dark:border-orange-600 text-xs">
+                      {animal.posicion}° lugar
                     </Badge>
                   )}
                 </div>
@@ -184,19 +227,19 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="h-8 w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <span className="sr-only">Abrir menú</span>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent 
+                  <DropdownMenuContent
                     align="end"
                     className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-900/20"
                   >
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => onViewDetails(animal)}
                       className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                     >
@@ -211,8 +254,8 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
           ))}
           {ganado.length === 0 && (
             <TableRow>
-              <TableCell 
-                colSpan={10} 
+              <TableCell
+                colSpan={10}
                 className="h-24 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50"
               >
                 <div className="flex flex-col items-center gap-2">
@@ -247,9 +290,10 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
                   variant={isCurrentPage ? "default" : "outline"}
                   size="sm"
                   onClick={() => onPageChange(pageNum)}
-                  className={isCurrentPage 
-                    ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500" 
-                    : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                  className={
+                    isCurrentPage
+                      ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500"
+                      : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
                   }
                 >
                   {pageNum}
@@ -263,9 +307,10 @@ export function GanadoListTable({ ganado, pagination, onPageChange, onViewDetail
                   variant={pagination.pages === pagination.page ? "default" : "outline"}
                   size="sm"
                   onClick={() => onPageChange(pagination.pages)}
-                  className={pagination.pages === pagination.page 
-                    ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500" 
-                    : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+                  className={
+                    pagination.pages === pagination.page
+                      ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500"
+                      : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
                   }
                 >
                   {pagination.pages}

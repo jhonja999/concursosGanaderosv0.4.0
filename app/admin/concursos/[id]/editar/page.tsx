@@ -89,6 +89,7 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
     companyId: "",
   })
   const [contestName, setContestName] = useState<string>("") // State to hold contest name for breadcrumbs
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   useEffect(() => {
     fetchContest()
@@ -133,12 +134,17 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
         })
       } else {
         toast.error("Error al cargar el concurso")
-        router.push("/admin/concursos")
+        // Don't redirect immediately on error, let user see the error
+        setTimeout(() => {
+          router.push("/admin/concursos")
+        }, 2000)
       }
     } catch (error) {
       console.error("Error fetching contest:", error)
       toast.error("Error al cargar el concurso")
-      router.push("/admin/concursos")
+      setTimeout(() => {
+        router.push("/admin/concursos")
+      }, 2000)
     } finally {
       setIsLoading(false)
     }
@@ -178,6 +184,14 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
       // Auto-generate slug when name changes
       if (field === "nombre" && typeof value === "string") {
         updated.slug = generateSlug(value)
+      }
+
+      // Handle image updates
+      if (field === "imagenPrincipal" && typeof value === "string") {
+        // Force re-render of CloudinaryUpload component
+        setTimeout(() => {
+          setHasUnsavedChanges(true)
+        }, 100)
       }
 
       return updated
@@ -234,7 +248,10 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
 
       if (response.ok) {
         toast.success("Concurso actualizado exitosamente")
-        router.push("/admin/concursos")
+        // Don't redirect immediately, let user see the success message
+        setTimeout(() => {
+          router.push("/admin/concursos")
+        }, 1500)
       } else {
         const error = await response.json()
         toast.error(error.message || "Error al actualizar el concurso")
@@ -655,6 +672,7 @@ export default function EditarConcursoPage({ params }: { params: Promise<{ id: s
               </CardHeader>
               <CardContent>
                 <CloudinaryUpload
+                  key={`image-upload-${formData.imagenPrincipal || "empty"}`} // Force re-render when image changes
                   value={formData.imagenPrincipal}
                   onChange={(url) => handleInputChange("imagenPrincipal", url)}
                   folder="concursos"

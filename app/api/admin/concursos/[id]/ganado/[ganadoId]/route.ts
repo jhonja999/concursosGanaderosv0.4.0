@@ -67,9 +67,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       expositorEmpresa: ganado.expositor?.empresa || "",
       expositorExperiencia: ganado.expositor?.experiencia || "",
       // Format dates and numbers
-      fechaNacimientoFormatted: ganado.fechaNacimiento ? ganado.fechaNacimiento.toISOString().split("T")[0] : "",
-      peso: ganado.pesoKg?.toString() || "",
-      puntaje: ganado.puntaje?.toString() || "",
+      fechaNacimiento: ganado.fechaNacimiento ? ganado.fechaNacimiento.toISOString().split("T")[0] : "",
+      peso: ganado.pesoKg || undefined,
+      puntaje: ganado.puntaje || undefined,
+      posicion: ganado.posicion || undefined,
+      // Ensure premiosObtenidos is an array
+      premiosObtenidos: Array.isArray(ganado.premiosObtenidos) ? ganado.premiosObtenidos : [],
     }
 
     return NextResponse.json({ ganado: transformedGanado })
@@ -96,6 +99,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     }
 
     const data = await request.json()
+    console.log("Updating ganado with data:", data)
 
     const existingGanado = await prisma.ganado.findFirst({
       where: {
@@ -117,6 +121,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
+    // Verificar duplicado de número de ficha
     if (data.numeroFicha && data.numeroFicha !== existingGanado.numeroFicha) {
       const duplicateGanado = await prisma.ganado.findFirst({
         where: {
@@ -134,6 +139,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       }
     }
 
+    // Actualizar propietario
     let propietarioId = existingGanado.propietarioId
     if (data.propietarioNombre) {
       const propietario = await prisma.propietario.upsert({
@@ -161,6 +167,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       propietarioId = propietario.id
     }
 
+    // Actualizar expositor
     let expositorId = existingGanado.expositorId
     if (data.expositorNombre && data.expositorNombre.trim() !== "") {
       const expositor = await prisma.expositor.upsert({
@@ -192,6 +199,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       expositorId = null
     }
 
+    // Manejar establo
     let establoId = data.establoId !== undefined ? data.establoId : existingGanado.establoId
     if (data.nuevoEstabloNombre && data.nuevoEstabloNombre.trim() !== "") {
       const newEstablo = await prisma.establo.create({
@@ -205,48 +213,76 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       establoId = newEstablo.id
     }
 
-    const finalTipoAnimal = data.tipoAnimal || existingGanado.tipoAnimal
-    const finalRaza = data.raza || existingGanado.raza
-
+    // Preparar datos de actualización
     const updateData: any = {
       nombre: data.nombre || existingGanado.nombre,
       numeroFicha: data.numeroFicha || existingGanado.numeroFicha,
-      tipoAnimal: finalTipoAnimal,
-      raza: finalRaza,
+      tipoAnimal: data.tipoAnimal || existingGanado.tipoAnimal,
+      raza: data.raza || existingGanado.raza,
       sexo: data.sexo || existingGanado.sexo,
       descripcion: data.descripcion !== undefined ? data.descripcion : existingGanado.descripcion,
-      marcasDistintivas:
-        data.marcasDistintivas !== undefined ? data.marcasDistintivas : existingGanado.marcasDistintivas,
+      marcasDistintivas: data.marcasDistintivas !== undefined ? data.marcasDistintivas : existingGanado.marcasDistintivas,
       padre: data.padre !== undefined ? data.padre : existingGanado.padre,
       madre: data.madre !== undefined ? data.madre : existingGanado.madre,
       lineaGenetica: data.lineaGenetica !== undefined ? data.lineaGenetica : existingGanado.lineaGenetica,
-      enRemate: data.enRemate !== undefined ? data.enRemate : existingGanado.enRemate,
-      precioBaseRemate:
-        data.precioBaseRemate !== undefined
-          ? data.precioBaseRemate
-            ? Number.parseFloat(data.precioBaseRemate)
-            : null
-          : existingGanado.precioBaseRemate,
-      isDestacado: data.isDestacado !== undefined ? data.isDestacado : existingGanado.isDestacado,
-      imagenUrl: data.imagenes?.[0] !== undefined ? data.imagenes[0] : existingGanado.imagenUrl,
+      enRemate: data.enRemate !== undefined ? Boolean(data.enRemate) : existingGanado.enRemate,
+      isDestacado: data.isDestacado !== undefined ? Boolean(data.isDestacado) : existingGanado.isDestacado,
+      isGanador: data.isGanador !== undefined ? Boolean(data.isGanador) : existingGanado.isGanador,
       propietarioId,
       expositorId,
       establoId,
     }
 
+    // Manejar campos opcionales
     if (data.fechaNacimiento !== undefined) {
       updateData.fechaNacimiento = data.fechaNacimiento ? new Date(data.fechaNacimiento) : null
     }
+
     if (data.peso !== undefined) {
-      updateData.pesoKg = data.peso && !isNaN(Number.parseFloat(data.peso)) ? Number.parseFloat(data.peso) : null
+      const peso = Number(data.peso)
+      updateData.pesoKg = !isNaN(peso) && peso > 0 ? peso : null
     }
+
     if (data.puntaje !== undefined) {
-      updateData.puntaje =
-        data.puntaje && !isNaN(Number.parseFloat(data.puntaje)) ? Number.parseFloat(data.puntaje) : null
+      const puntaje = Number(data.puntaje)
+      updateData.puntaje = !isNaN(puntaje) ? puntaje : null
     }
+
+    if (data.posicion !== undefined) {
+      const posicion = Number(data.posicion)
+      updateData.posicion = !isNaN(posicion) && posicion > 0 ? posicion : null
+    }
+
+    if (data.calificacion !== undefined) {
+      updateData.calificacion = data.calificacion && data.calificacion.trim() !== "" ? data.calificacion : null
+    }
+
+    if (data.precioBaseRemate !== undefined) {
+      const precio = Number(data.precioBaseRemate)
+      updateData.precioBaseRemate = !isNaN(precio) && precio > 0 ? precio : null
+    }
+
     if (data.contestCategoryId) {
       updateData.contestCategoryId = data.contestCategoryId
     }
+
+    // Manejar premios obtenidos
+    if (data.premiosObtenidos !== undefined) {
+      if (Array.isArray(data.premiosObtenidos)) {
+        updateData.premiosObtenidos = data.premiosObtenidos.filter((premio: string) => 
+          typeof premio === 'string' && premio.trim() !== ''
+        )
+      } else {
+        updateData.premiosObtenidos = []
+      }
+    }
+
+    // Manejar imágenes
+    if (data.imagenes !== undefined) {
+      updateData.imagenUrl = Array.isArray(data.imagenes) && data.imagenes.length > 0 ? data.imagenes[0] : null
+    }
+
+    console.log("Final update data:", updateData)
 
     const updatedGanado = await prisma.ganado.update({
       where: { id: ganadoId },
@@ -263,9 +299,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     })
 
     return NextResponse.json({ ganado: updatedGanado })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating ganado:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      code: (error as any)?.code || 'Unknown code',
+    })
+    return NextResponse.json({ 
+      error: "Error interno del servidor",
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
+    }, { status: 500 })
   }
 }
 
