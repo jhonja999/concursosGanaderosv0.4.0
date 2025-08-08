@@ -65,8 +65,10 @@ export default function ConcursosClientPage() {
   useEffect(() => {
     const fetchContests = async () => {
       const contestsData = await getContests()
-      setContests(contestsData)
-      setFilteredContests(contestsData)
+      // Sort by fechaInicio descending (latest first)
+      const sortedContests = [...contestsData].sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
+      setContests(sortedContests)
+      setFilteredContests(sortedContests)
       setLoading(false)
     }
 
@@ -112,6 +114,8 @@ export default function ConcursosClientPage() {
       })
     }
 
+    // Sort filtered contests by fechaInicio descending (latest first)
+    filtered.sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
     setFilteredContests(filtered)
   }
 
