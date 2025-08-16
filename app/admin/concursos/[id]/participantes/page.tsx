@@ -26,6 +26,7 @@ import { formatDate } from "@/lib/utils"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { PageHeader } from "@/components/shared/page-header"
+import { ImageEditDialog } from "@/components/shared/image-edit-dialog"
 
 interface Ganado {
   id: string
@@ -111,6 +112,8 @@ export default function ParticipantesPage() {
   const [selectedGanado, setSelectedGanado] = useState<Ganado | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [contestName, setContestName] = useState<string>("")
+  const [imageEditDialog, setImageEditDialog] = useState(false)
+  const [selectedImageGanado, setSelectedImageGanado] = useState<Ganado | null>(null)
 
   // Data for filters
   const [categorias, setCategorias] = useState<ContestCategory[]>([])
@@ -245,6 +248,19 @@ export default function ParticipantesPage() {
 
   const exportData = () => {
     toast.info("Función de exportación en desarrollo")
+  }
+
+  const handleImageEdit = (animal: Ganado) => {
+    setSelectedImageGanado(animal)
+    setImageEditDialog(true)
+  }
+
+  const handleImageUpdate = (newImageUrl: string) => {
+    if (selectedImageGanado) {
+      setGanado((prev) =>
+        prev.map((animal) => (animal.id === selectedImageGanado.id ? { ...animal, imagenUrl: newImageUrl } : animal)),
+      )
+    }
   }
 
   const getSexoLabel = (sexo: string) => (sexo === "MACHO" ? "Macho" : "Hembra")
@@ -387,10 +403,20 @@ export default function ParticipantesPage() {
                   <TableRow key={animal.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={animal.imagenUrl || "/placeholder.svg"} alt={animal.nombre} />
-                          <AvatarFallback>{animal.nombre.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <div className="relative group">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={animal.imagenUrl || "/placeholder.svg"} alt={animal.nombre} />
+                            <AvatarFallback>{animal.nombre.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-full w-10 h-10 p-0"
+                            onClick={() => handleImageEdit(animal)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <div>
                           <div className="font-medium">{animal.nombre}</div>
                           <div className="text-sm text-muted-foreground">
@@ -515,6 +541,37 @@ export default function ParticipantesPage() {
                     alt={selectedGanado.nombre}
                     className="w-full h-64 object-cover rounded-lg border"
                   />
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" onClick={() => handleImageEdit(selectedGanado)}>
+                      <Edit className="h-3 w-3 mr-2" />
+                      Editar imagen
+                    </Button>
+                    {selectedGanado.imagenUrl && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/ganado/${selectedGanado.id}/image`, {
+                              method: "DELETE",
+                              credentials: "include",
+                            })
+                            if (!res.ok) throw new Error("Error al eliminar imagen")
+                            toast.success("Imagen eliminada")
+                            // Update local state
+                            setGanado((prev) => prev.map((a) => (a.id === selectedGanado.id ? { ...a, imagenUrl: "" } : a)))
+                            setSelectedGanado((s) => (s ? { ...s, imagenUrl: "" } : s))
+                          } catch (err) {
+                            console.error(err)
+                            toast.error("Error al eliminar imagen")
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="md:col-span-2 space-y-4">
                   <div>
@@ -623,6 +680,15 @@ export default function ParticipantesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImageEditDialog
+        open={imageEditDialog}
+        onOpenChange={setImageEditDialog}
+        currentImageUrl={selectedImageGanado?.imagenUrl}
+        entityId={selectedImageGanado?.id || ""}
+        entityType="ganado"
+        onImageUpdate={handleImageUpdate}
+      />
     </div>
   )
 }

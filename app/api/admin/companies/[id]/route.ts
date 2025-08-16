@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { logActivity } from "@/lib/audit"
 
 // GET - Get company by ID
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify authentication
     const token = request.cookies.get("auth-token")?.value
@@ -26,8 +26,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
+    const { id } = await params
+
     const company = await prisma.company.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT - Update company
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify authentication
     const token = request.cookies.get("auth-token")?.value
@@ -105,8 +107,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Check if company exists
+    const { id } = await params
+
     const existingCompany = await prisma.company.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingCompany) {
@@ -118,7 +122,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       const slugExists = await prisma.company.findFirst({
         where: {
           slug,
-          id: { not: params.id },
+      id: { not: id },
         },
       })
 
@@ -132,7 +136,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       const emailExists = await prisma.company.findFirst({
         where: {
           email,
-          id: { not: params.id },
+      id: { not: id },
         },
       })
 
@@ -143,7 +147,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Update company
     const updatedCompany = await prisma.company.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nombre,
         slug: slug || existingCompany.slug,
@@ -180,7 +184,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE - Delete company
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify authentication
     const token = request.cookies.get("auth-token")?.value
@@ -203,8 +207,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // Check if company exists
+    const { id } = await params
+
     const company = await prisma.company.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -230,7 +236,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // Delete company
     await prisma.company.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Log activity

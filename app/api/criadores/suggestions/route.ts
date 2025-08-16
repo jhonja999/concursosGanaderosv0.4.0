@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
+    const payload = await verifyToken(token)
     if (!payload) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
@@ -22,17 +22,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Determinar companyId
-    const companyId = payload.roles.includes("SUPERADMIN") ? 
-      searchParams.get("companyId") : payload.companyId
+    let companyId: string | null = null
+    if (payload.roles.includes("SUPERADMIN")) {
+      const paramCompanyId = searchParams.get("companyId")
+      companyId = typeof paramCompanyId === "string" ? paramCompanyId : null
+    } else {
+      companyId = typeof payload.companyId === "string" ? payload.companyId : null
+    }
 
     if (!companyId) {
       return NextResponse.json([])
     }
 
-    const criadores = await prisma.criador.findMany({
+    const propietarios = await prisma.propietario.findMany({
       where: {
         companyId,
-        isActive: true,
         nombreCompleto: {
           contains: query,
           mode: "insensitive"
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(criadores)
+    return NextResponse.json(propietarios)
   } catch (error) {
     console.error("Error fetching criador suggestions:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

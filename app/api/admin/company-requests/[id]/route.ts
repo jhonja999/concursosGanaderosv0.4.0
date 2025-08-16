@@ -4,7 +4,7 @@ import { verifyToken } from "@/lib/jwt"
 import { sendEmail } from "@/lib/email"
 import { emailTemplates } from "@/lib/email-templates"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.cookies.get("auth-token")?.value // Use "auth-token"
     if (!token) {
@@ -36,8 +36,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
     }
 
+    const { id } = await params
+
     const companyRequest = await prisma.companyRequest.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!companyRequest) {
@@ -92,7 +94,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
         // Actualizar solicitud
         const updatedRequest = await tx.companyRequest.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             status: "APROBADA",
             notas,
@@ -124,7 +126,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     } else {
       // Rechazar solicitud
       const updatedRequest = await prisma.companyRequest.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           status: "RECHAZADA",
           notas,

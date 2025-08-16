@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/jwt"
 import { markNotificationAsRead } from "@/lib/notifications"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verificar autenticación
     const token = request.cookies.get("auth-token")?.value
@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
 
-    const notificationId = params.id
+  const { id: notificationId } = await params
 
     // Marcar como leída
     const notification = await markNotificationAsRead(notificationId)

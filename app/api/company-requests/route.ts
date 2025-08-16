@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
 
     // Obtener solicitudes del usuario actual
     const requests = await prisma.companyRequest.findMany({
-      where: {
-        email: decoded.email, // Assuming email is in the JWT payload
-      },
+        where: {
+          email: typeof decoded.email === "string" ? decoded.email : "",
+        },
       orderBy: {
         createdAt: "desc",
       },

@@ -147,6 +147,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [captureSource, setCaptureSource] = useState<"camera" | "file" | "url" | null>(null);
 
   // Camera states
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -182,6 +183,12 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
     );
   }, []);
 
+  // Prevent hydration mismatch: render nothing server-side and mount on client
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Enhanced camera cleanup
   const cleanupCamera = useCallback(async () => {
     if (streamTimeoutRef.current) {
@@ -209,6 +216,12 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   const checkExistingImage = useCallback(
     async (filename: string) => {
       setIsCheckingDuplicate(true);
+      // Network-tolerant check: if the API is unreachable, silently continue
+      // and allow the upload flow to proceed. This prevents dev-time ERR_CONNECTION_REFUSED
+      // from blocking the user when the dev server or proxy isn't reachable.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       try {
         const response = await fetch("/api/upload/check-existing", {
           method: "POST",
@@ -220,23 +233,34 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
             folder,
             entityType,
           }),
+          signal: controller.signal,
         });
 
-        if (response.ok) {
-          const existingInfo: ExistingImageInfo = await response.json();
-          setExistingImage(existingInfo);
+        clearTimeout(timeout);
 
-          if (existingInfo.exists) {
-            setShowDuplicateDialog(true);
-            return true;
-          }
+        if (!response.ok) {
+          // Treat non-OK responses as "no existing image" so upload can continue.
+          return false;
         }
+
+        const existingInfo: ExistingImageInfo = await response.json();
+        setExistingImage(existingInfo);
+
+        if (existingInfo.exists) {
+          setShowDuplicateDialog(true);
+          return true;
+        }
+
         return false;
       } catch (error) {
-        console.error("Error checking existing image:", error);
+        // Network errors or aborts are non-fatal for the upload flow.
+        console.debug("checkExistingImage network error or timeout:", error);
         return false;
       } finally {
         setIsCheckingDuplicate(false);
+        try {
+          clearTimeout(timeout);
+        } catch {}
       }
     },
     [folder, entityType]
@@ -244,7 +268,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
 
   // Create preview function
   const createPreview = useCallback(
-    async (file: File) => {
+    async (file: File, source: "camera" | "file" | "url" = "file") => {
       const validation = validateFile(file, acceptedFormats);
       if (!validation.isValid) {
         toast.error(validation.error);
@@ -261,6 +285,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
       };
 
       setPreviewFile(newPreviewFile);
+      setCaptureSource(source);
       await checkExistingImage(file.name);
     },
     [acceptedFormats, checkExistingImage]
@@ -271,7 +296,7 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
       const file = files[0];
-      createPreview(file);
+  createPreview(file, "file");
     },
     [createPreview]
   );
@@ -746,6 +771,21 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
           } else if (error.name === "NotReadableError") {
             errorMessage =
               "La cámara está siendo usada por otra aplicación o hay un problema de hardware.";
+            // Try to stop any existing tracks and retry once with a more basic config
+            try {
+              if (cameraStream) {
+                cameraStream.getTracks().forEach((t) => t.stop());
+              }
+            } catch (stopErr) {
+              console.warn("Error stopping tracks before retry:", stopErr);
+            }
+
+            if (!useBasicConfig && retryCount < 2) {
+              console.log("NotReadableError: retrying with basic config...");
+              setRetryCount((prev) => prev + 1);
+              setTimeout(() => startCamera(deviceId, true), 800);
+              return;
+            }
           } else if (error.name === "OverconstrainedError") {
             errorMessage =
               "La cámara seleccionada no soporta la configuración requerida.";
@@ -846,13 +886,15 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
         return;
       }
 
-      const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+  const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
         type: "image/jpeg",
       });
 
-      await createPreview(file);
-      await stopCamera();
-      toast.success("Foto capturada exitosamente");
+  // Create preview but mark source as camera so we show inline confirmation
+  await createPreview(file, "camera");
+  // Stop camera to release resources but keep UI in place for confirmation
+  await stopCamera();
+  toast.success("Foto capturada exitosamente");
     } catch (error) {
       console.error("Error capturing photo:", error);
       toast.error("Error al procesar la foto");
@@ -870,6 +912,11 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
   }, [cleanupCamera, previewFile]);
 
   // Show current image if exists
+  // Avoid rendering UI on server to prevent hydration mismatches caused by
+  // navigator/mediaDevices differences and dynamic attributes. Render nothing
+  // until mounted on client.
+  if (!mounted) return null;
+
   if (value && !previewFile) {
     return (
       <Card className={`w-full ${className}`}>
@@ -1392,6 +1439,72 @@ export const CloudinaryUpload = React.memo(function CloudinaryUpload({
                     </Button>
                   </div>
                 </div>
+              )}
+              {/* Inline camera-capture preview and confirmation for mobile-first UX */}
+              {previewFile && captureSource === "camera" && (
+                (() => {
+                  const pf = previewFile as PreviewFile;
+                  return (
+                    <div className="space-y-4 mt-4">
+                      <Label className="text-sm font-medium">Confirmar foto</Label>
+                      <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+                        {pf.preview.startsWith("blob:") || pf.preview.startsWith("data:") ? (
+                          // Use native img for object URLs / data URLs to avoid Next/Image file handling
+                          // which doesn't support blob: URLs.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={pf.preview} alt="Foto capturada" className="w-full h-full object-cover" />
+                        ) : (
+                          <Image src={pf.preview} alt="Foto capturada" fill className="object-cover" />
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={async () => {
+                            // confirm: upload but keep form intact until server returns
+                            await handleSaveFile();
+                          }}
+                          disabled={isUploading}
+                          className="flex-1"
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Confirmar
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            // Retake: clear preview and reopen camera
+                            const pf2 = previewFile as PreviewFile | null;
+                            if (pf2) URL.revokeObjectURL(pf2.preview);
+                            setPreviewFile(null);
+                            setCaptureSource(null);
+                            // Try to restart camera
+                            setTimeout(() => startCamera(selectedCamera), 250);
+                          }}
+                          disabled={isUploading}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Volver a intentar
+                        </Button>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        La foto no se publicará hasta que confirmes. Los formularios
+                        y modales permanecerán intactos.
+                      </div>
+                    </div>
+                  );
+                })()
               )}
               <canvas ref={canvasRef} className="hidden" />
             </TabsContent>

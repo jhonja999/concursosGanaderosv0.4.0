@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const payload = verifyToken(token)
+    const payload = await verifyToken(token)
     if (!payload) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
@@ -22,8 +22,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Determinar companyId
-    const companyId = payload.roles.includes("SUPERADMIN") ? 
-      searchParams.get("companyId") : payload.companyId
+    let companyId: string | null = null
+    if (payload.roles.includes("SUPERADMIN")) {
+      const paramCompanyId = searchParams.get("companyId")
+      companyId = typeof paramCompanyId === "string" ? paramCompanyId : null
+    } else {
+      companyId = typeof payload.companyId === "string" ? payload.companyId : null
+    }
 
     if (!companyId) {
       return NextResponse.json([])
@@ -32,7 +37,6 @@ export async function GET(request: NextRequest) {
     const establos = await prisma.establo.findMany({
       where: {
         companyId,
-        isActive: true,
         nombre: {
           contains: query,
           mode: "insensitive"

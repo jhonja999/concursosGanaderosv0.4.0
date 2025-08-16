@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
 
 // GET all events for a contest
-export async function GET(request: NextRequest, context: { params: { id: string } }) {
-  const id = context.params.id // Correct way to access route parameters
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const params = await context.params
+  const id = params.id
   if (!id) {
     return NextResponse.json({ error: "ID del concurso no proporcionado" }, { status: 400 })
   }
@@ -31,8 +32,9 @@ export async function GET(request: NextRequest, context: { params: { id: string 
 }
 
 // POST a new event for a contest
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
-  const id = context.params.id // Correct way to access route parameters
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const params = await context.params
+  const id = params.id
   if (!id) {
     return NextResponse.json({ error: "ID del concurso no proporcionado" }, { status: 400 })
   }

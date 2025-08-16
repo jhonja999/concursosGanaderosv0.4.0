@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.cookies.get("auth-token")?.value
 
@@ -15,8 +15,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Token inválido" }, { status: 401 })
     }
 
+    const { id } = await params;
+
     const image = await prisma.programImage.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         uploadedBy: {
           select: {
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.cookies.get("auth-token")?.value
 
@@ -64,9 +66,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json()
     const { title, description, imageUrl, publicId, eventDate, eventTime, location, isActive } = body
 
+    const { id } = await params;
+
     // Check if image exists
     const existingImage = await prisma.programImage.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingImage) {
@@ -85,7 +89,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (isActive !== undefined) updateData.isActive = isActive
 
     const image = await prisma.programImage.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         uploadedBy: {
@@ -104,7 +108,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.cookies.get("auth-token")?.value
 
@@ -127,9 +131,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
+    const { id } = await params;
+
     // Check if image exists
     const existingImage = await prisma.programImage.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingImage) {
@@ -137,7 +143,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.programImage.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Imagen eliminada correctamente" })

@@ -4,8 +4,10 @@ import { verifyToken } from "@/lib/jwt"
 import { notifyUserUpdated, notifyUserDeleted } from "@/lib/notifications"
 import { auditUserUpdate, auditUserDelete } from "@/lib/audit"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params
+
     // Verificar que sea SUPERADMIN o CONCURSO_ADMIN
     const token = request.cookies.get("auth-token")?.value
     if (!token) {
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    const userId = params.id
+    const userId = resolvedParams.id
 
     // Obtener usuario con información de compañía
     const user = await prisma.user.findUnique({
@@ -60,8 +62,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params
+
     // Verificar que sea SUPERADMIN o CONCURSO_ADMIN
     const token = request.cookies.get("auth-token")?.value
     if (!token) {
@@ -79,7 +83,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    const userId = params.id
+    const userId = resolvedParams.id
     const body = await request.json()
 
     // Validar datos de entrada
@@ -186,8 +190,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params
+
     // Verificar que sea SUPERADMIN
     const token = request.cookies.get("auth-token")?.value
     if (!token) {
@@ -199,7 +205,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
-    const userId = params.id
+    const userId = resolvedParams.id
 
     // Obtener usuario antes de eliminar
     const userToDelete = await prisma.user.findUnique({

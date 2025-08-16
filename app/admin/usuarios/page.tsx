@@ -40,6 +40,7 @@ import {
   Building2,
   RefreshCw,
   Users,
+  Trophy,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
@@ -77,6 +78,9 @@ export default function UsuariosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = useState(false)
+  const [selectedCompanyId, setSelectedCompanyId] = useState("")
+  const [userToAssignCompany, setUserToAssignCompany] = useState<User | null>(null)
 
   useEffect(() => {
     fetchUsers()
@@ -116,11 +120,17 @@ export default function UsuariosPage() {
     try {
       const response = await fetch("/api/admin/companies")
       if (response.ok) {
-        const companies = await response.json()
-        setCompanies(companies.map((c: any) => ({ id: c.id, nombre: c.nombre })))
+        const data = await response.json()
+        const companiesArray = data.companies || data || []
+        const validCompanies = Array.isArray(companiesArray) ? companiesArray : []
+        setCompanies(validCompanies.map((c: any) => ({ id: c.id, nombre: c.nombre })))
+      } else {
+        console.error("Error fetching companies:", response.statusText)
+        setCompanies([])
       }
     } catch (error) {
       console.error("Error fetching companies:", error)
+      setCompanies([])
     }
   }
 
@@ -222,6 +232,39 @@ export default function UsuariosPage() {
     a.download = "usuarios.csv"
     a.click()
     window.URL.revokeObjectURL(url)
+  }
+
+  const handleAssignCompany = async () => {
+    if (!userToAssignCompany || !selectedCompanyId) return
+
+    try {
+      const response = await fetch(`/api/admin/users/${userToAssignCompany.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: selectedCompanyId }),
+      })
+
+      if (response.ok) {
+        const updatedUser = await response.json()
+        setUsers(
+          users.map((user) =>
+            user.id === userToAssignCompany.id
+              ? { ...user, company: companies.find((c) => c.id === selectedCompanyId) }
+              : user,
+          ),
+        )
+        setIsCompanyDialogOpen(false)
+        setUserToAssignCompany(null)
+        setSelectedCompanyId("")
+      }
+    } catch (error) {
+      console.error("Error assigning company:", error)
+    }
+  }
+
+  const openCompanyAssignmentDialog = (user: User) => {
+    setUserToAssignCompany(user)
+    setIsCompanyDialogOpen(true)
   }
 
   if (isLoading) {
@@ -436,7 +479,19 @@ export default function UsuariosPage() {
                         <span className="text-sm">{user.company.nombre}</span>
                       </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Sin asignar</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Sin asignar</span>
+                        {user.role !== "SUPERADMIN" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openCompanyAssignmentDialog(user)}
+                            className="h-6 text-xs"
+                          >
+                            Asignar
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>{getStatusBadge(user.isActive)}</TableCell>
@@ -467,6 +522,20 @@ export default function UsuariosPage() {
                             Editar
                           </Link>
                         </DropdownMenuItem>
+                        {user.role === "REGISTRADOR" && (
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/usuarios/${user.id}/asignar-concursos`}>
+                              <Trophy className="mr-2 h-4 w-4" />
+                              Asignar Concursos
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        {!user.company && user.role !== "SUPERADMIN" && (
+                          <DropdownMenuItem onClick={() => openCompanyAssignmentDialog(user)}>
+                            <Building2 className="mr-2 h-4 w-4" />
+                            Asignar Compañía
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleToggleStatus(user.id, user.isActive)}>
                           {user.isActive ? (
@@ -561,6 +630,43 @@ export default function UsuariosPage() {
                 <Link href={`/admin/usuarios/${selectedUser.id}/editar`}>Editar Usuario</Link>
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Company Assignment Dialog */}
+      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Compañía</DialogTitle>
+            <DialogDescription>
+              Selecciona una compañía para asignar a {userToAssignCompany?.nombre} {userToAssignCompany?.apellido}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Compañía</Label>
+              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una compañía" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCompanyDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAssignCompany} disabled={!selectedCompanyId}>
+              Asignar Compañía
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

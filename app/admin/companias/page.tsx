@@ -69,13 +69,16 @@ export default function CompaniasPage() {
       const response = await fetch("/api/admin/companies")
       if (response.ok) {
         const data = await response.json()
-        setCompanies(data.companies || [])
+        const companiesArray = data.companies || data || []
+        setCompanies(Array.isArray(companiesArray) ? companiesArray : [])
       } else {
         toast.error("Error al cargar las compañías")
+        setCompanies([])
       }
     } catch (error) {
       console.error("Error fetching companies:", error)
       toast.error("Error al cargar las compañías")
+      setCompanies([])
     } finally {
       setIsLoading(false)
     }

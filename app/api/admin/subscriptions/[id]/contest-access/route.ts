@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verificar que sea SUPERADMIN
     const token = request.cookies.get("auth-token")?.value
@@ -19,8 +19,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { contestAccessEnabled } = body
 
     // Actualizar la suscripción
+    const { id } = await params
+
     const subscription = await prisma.subscription.update({
-      where: { id: params.id },
+      where: { id },
       data: { contestAccessEnabled },
       include: {
         company: {

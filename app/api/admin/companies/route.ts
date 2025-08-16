@@ -35,11 +35,10 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Devolver en el formato esperado por el componente
-    return NextResponse.json({ companies })
+    return NextResponse.json({ companies: companies || [] })
   } catch (error) {
     console.error("Error fetching companies:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ companies: [] }, { status: 500 })
   }
 }
 

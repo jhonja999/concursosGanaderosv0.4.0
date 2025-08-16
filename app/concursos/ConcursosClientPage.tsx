@@ -61,6 +61,13 @@ export default function ConcursosClientPage() {
   const [contests, setContests] = useState<Contest[]>([])
   const [filteredContests, setFilteredContests] = useState<Contest[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeContests, setActiveContests] = useState<Contest[]>([])
+  const [finishedContests, setFinishedContests] = useState<Contest[]>([])
+  const [clientReady, setClientReady] = useState(false)
+
+  useEffect(() => {
+    setClientReady(true)
+  }, [])
 
   useEffect(() => {
     const fetchContests = async () => {
@@ -71,9 +78,27 @@ export default function ConcursosClientPage() {
       setFilteredContests(sortedContests)
       setLoading(false)
     }
-
     fetchContests()
   }, [])
+
+  // Update active/finished contests after filtering, only on client
+  useEffect(() => {
+    if (!clientReady) return
+    const now = new Date()
+    setActiveContests(
+      filteredContests.filter((contest) => {
+        const startDate = new Date(contest.fechaInicio)
+        const endDate = contest.fechaFin ? new Date(contest.fechaFin) : null
+        return !endDate || endDate >= now
+      })
+    )
+    setFinishedContests(
+      filteredContests.filter((contest) => {
+        const endDate = contest.fechaFin ? new Date(contest.fechaFin) : null
+        return endDate && endDate < now
+      })
+    )
+  }, [filteredContests, clientReady])
 
   const handleFiltersChange = (filters: any) => {
     let filtered = [...contests]
@@ -88,7 +113,7 @@ export default function ConcursosClientPage() {
       filtered = filtered.filter((contest) => contest.ubicacion?.toLowerCase().includes(filters.location.toLowerCase()))
     }
 
-    if (filters.status) {
+    if (filters.status && clientReady) {
       const now = new Date()
       filtered = filtered.filter((contest) => {
         const startDate = new Date(contest.fechaInicio)
@@ -105,8 +130,8 @@ export default function ConcursosClientPage() {
             return (
               contest.fechaInicioRegistro &&
               contest.fechaFinRegistro &&
-              new Date() >= new Date(contest.fechaInicioRegistro) &&
-              new Date() <= new Date(contest.fechaFinRegistro)
+              now >= new Date(contest.fechaInicioRegistro) &&
+              now <= new Date(contest.fechaFinRegistro)
             )
           default:
             return true
@@ -119,23 +144,7 @@ export default function ConcursosClientPage() {
     setFilteredContests(filtered)
   }
 
-  // Separar concursos por estado
-  const activeContests = filteredContests.filter((contest) => {
-    const now = new Date()
-    const startDate = new Date(contest.fechaInicio)
-    const endDate = contest.fechaFin ? new Date(contest.fechaFin) : null
-
-    return !endDate || endDate >= now
-  })
-
-  const finishedContests = filteredContests.filter((contest) => {
-    const now = new Date()
-    const endDate = contest.fechaFin ? new Date(contest.fechaFin) : null
-
-    return endDate && endDate < now
-  })
-
-  if (loading) {
+  if (loading || !clientReady) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -173,20 +182,22 @@ export default function ConcursosClientPage() {
                 <Mountain className="h-6 w-6" />
                 <span className="text-lg font-semibold">Cajamarca - 2,750 msnm</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base">
-                <div className="flex items-center justify-center gap-2">
-                  <Trophy className="h-5 w-5" />
-                  <span>{contests.length} Concursos</span>
+              {clientReady && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base">
+                  <div className="flex items-center justify-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    <span>{contests.length} Concursos</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Users className="h-5 w-5" />
+                    <span>{contests.reduce((acc, c) => acc + c.participantCount, 0)} Participantes</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    <span>{new Set(contests.map((c) => c.company.id)).size} Organizadores</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Users className="h-5 w-5" />
-                  <span>{contests.reduce((acc, c) => acc + c.participantCount, 0)} Participantes</span>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  <span>{new Set(contests.map((c) => c.company.id)).size} Organizadores</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

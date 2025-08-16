@@ -138,6 +138,7 @@ uploadedMedia           Media[]
 contestsCreated         Contest[]            @relation("ContestCreator")
 ganadoCreado            Ganado[]             @relation("GanadoCreator")
 programImages           ProgramImage[]       @relation("ProgramImageUploader")
+contestAssignments      UserContestAssignment[]
 
 // ÍNDICES OPTIMIZADOS
 @@index([email])
@@ -310,6 +311,7 @@ createdBy             User?         @relation("ContestCreator", fields: [created
 events                Event[]
 contestCategories     ContestCategory[]
 ganadoParticipante    Ganado[]          @relation("ContestParticipants")
+userAssignments       UserContestAssignment[]
 
 createdAt             DateTime      @default(now())
 updatedAt             DateTime      @updatedAt
@@ -433,6 +435,7 @@ reviewedBy        User?                @relation(fields: [reviewedById], referen
 reviewedAt        DateTime?
 companyId         String?              @unique
 company           Company?             @relation(fields: [companyId], references: [id])
+
 priority          Int                  @default(1)
 tags              String[]
 
@@ -525,14 +528,15 @@ actionUrl   String?
 resolvedAt  DateTime?
 resolvedBy  String?
 resolution  String?  @db.Text
-createdAt   DateTime @default(now())
-updatedAt   DateTime @updatedAt
-
-// ÍNDICES OPTIMIZADOS
-@@index([isActive, priority, createdAt]) // Para alertas activas por prioridad
-@@index([type, isResolved]) // Para análisis por tipo
-@@index([entityType, entityId]) // Para alertas por entidad
-@@map("alerts")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // ÍNDICES OPTIMIZADOS
+  @@index([isActive, priority, createdAt]) // Para alertas activas por prioridad
+  @@index([type, isResolved]) // Para análisis por tipo
+  @@index([entityType, entityId]) // Para alertas por entidad
+  @@map("alerts")
 }
 
 // =========================================================================
@@ -755,4 +759,29 @@ model Ganado {
   @@index([expositorId])
   @@index([establoId])
   @@map("ganado")
+}
+
+// =========================================================================
+// MODELO DE ASIGNACIÓN USUARIO-CONCURSO (NUEVO)
+// =========================================================================
+model UserContestAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  contestId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  assignedBy String?  // ID del usuario que hizo la asignación
+  isActive   Boolean  @default(true)
+  notes      String?  @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // ÍNDICES OPTIMIZADOS
+  @@unique([userId, contestId]) // Evitar asignaciones duplicadas
+  @@index([userId, isActive]) // Para consultas de concursos asignados por usuario
+  @@index([contestId, isActive]) // Para consultas de usuarios asignados por concurso
+  @@index([assignedAt]) // Para ordenamiento por fecha de asignación
+  @@map("user_contest_assignments")
 }
