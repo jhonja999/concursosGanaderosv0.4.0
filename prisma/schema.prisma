@@ -654,7 +654,7 @@ model Establo {
 model Propietario {
   id              String    @id @default(cuid())
   nombreCompleto  String
-  documentoLegal  String?   @unique
+  documentoLegal  String?
   telefono        String?
   email           String?   @unique
   direccion       String?
@@ -678,7 +678,7 @@ model Propietario {
 model Expositor {
   id                  String    @id @default(cuid())
   nombreCompleto      String
-  documentoIdentidad  String?   @unique
+  documentoIdentidad  String?
   telefono            String?
   email               String?   @unique
   empresa             String?
