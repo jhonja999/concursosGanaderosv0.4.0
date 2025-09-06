@@ -6,7 +6,8 @@ export async function GET() {
     const contests = await prisma.contest.findMany({
       select: {
         ubicacion: true,
-        tipoGanado: true,
+  tipoGanado: true,
+  categorias: true,
       },
       where: {
         isActive: true,
@@ -19,10 +20,31 @@ export async function GET() {
       new Set(contests.flatMap((c) => c.tipoGanado).filter(Boolean) as string[]),
     ).sort()
 
+    const distinctCategorias = Array.from(new Set(contests.flatMap((c) => c.categorias || []).filter(Boolean) as string[])).sort()
+
+    // Build mapping of animalType -> categorias (to allow client to filter categories by selected type)
+    const categoriesByTypeMap: Record<string, string[]> = {}
+    contests.forEach((c) => {
+      const tipos = c.tipoGanado || []
+      const cats = c.categorias || []
+      tipos.forEach((t: string) => {
+        const key = t.toLowerCase()
+        if (!categoriesByTypeMap[key]) categoriesByTypeMap[key] = []
+        cats.forEach((cat: string) => {
+          if (!categoriesByTypeMap[key].includes(cat)) categoriesByTypeMap[key].push(cat)
+        })
+      })
+    })
+
+    // sort each category list
+    Object.keys(categoriesByTypeMap).forEach((k) => categoriesByTypeMap[k].sort())
+
     return NextResponse.json({
-      success: true,
-      locations: distinctLocations,
-      animalTypes: distinctAnimalTypes,
+  success: true,
+  locations: distinctLocations,
+  animalTypes: distinctAnimalTypes,
+  categorias: distinctCategorias,
+  categoriesByType: categoriesByTypeMap,
     })
   } catch (error) {
     console.error("Error fetching distinct contest values:", error)

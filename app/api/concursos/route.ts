@@ -3,11 +3,9 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    // Get all public contests (exclude drafts) with company data
+    // Get all contests (all statuses) with company data so admin/public can show history
     const contests = await prisma.contest.findMany({
-      where: {
-        status: { not: "BORRADOR" },
-      },
+      // no where: return all statuses
       include: {
         company: {
           select: {
@@ -35,6 +33,8 @@ export async function GET() {
           slug: contest.slug,
           descripcion: contest.descripcion,
           imagenPrincipal: contest.imagenPrincipal,
+          categorias: contest.categorias || [],
+          status: contest.status,
           fechaInicio: contest.fechaInicio.toISOString(),
           fechaFin: contest.fechaFin?.toISOString(),
           fechaInicioRegistro: contest.fechaInicioRegistro?.toISOString(),

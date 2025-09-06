@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
+// Badge removed from hero summary; kept minimal
 import { Button } from "@/components/ui/button"
-import { Users, Building2, Trophy, ArrowRight, Mountain } from "lucide-react"
+import { Users, Building2, Trophy, ArrowRight, Mountain, Badge } from "lucide-react"
 import Link from "next/link"
 import ContestCard from "@/components/ContestCard"
 import { Logo } from "@/components/shared/logo"
@@ -16,6 +16,7 @@ interface Contest {
   slug: string
   descripcion: string
   imagenPrincipal?: string | null
+  status: string
   fechaInicio: string
   fechaFin?: string
   fechaInicioRegistro?: string
@@ -49,27 +50,8 @@ async function getContests(): Promise<Contest[]> {
       return []
     }
 
-    // Parse response safely and log for debugging
-    let data: any
-    try {
-      data = await response.json()
-    } catch (err) {
-      const text = await response.text()
-      console.warn('Could not parse JSON from /api/concursos, raw text:', text)
-      return []
-    }
-
-    console.debug('Fetched /api/concursos ->', data)
-
-    // Support different response shapes for robustness
-    if (Array.isArray(data)) return data
-    if (data && Array.isArray(data.contests)) return data.contests
-    if (data && data.success && data.contests === undefined) {
-      console.warn('/api/concursos returned success but no contests field', data)
-      return []
-    }
-
-    return []
+    const data = await response.json()
+    return data.contests || []
   } catch (error) {
     console.error("Error fetching contests:", error)
     return []
@@ -82,8 +64,9 @@ export default function ConcursosClientPage() {
   const [loading, setLoading] = useState(true)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
   const [finishedContests, setFinishedContests] = useState<Contest[]>([])
-  const [selectedStatus, setSelectedStatus] = useState<string>("default") // 'default' => show en_curso + finalizados
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({ todos: 0, proximos: 0, en_curso: 0, finalizados: 0, inscripciones: 0 })
+  // selectedStatus follows the API enum values or 'ALL'
+  const [selectedStatus, setSelectedStatus] = useState<string>("ALL")
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({ ALL: 0, PUBLICADO: 0, INSCRIPCIONES_ABIERTAS: 0, INSCRIPCIONES_CERRADAS: 0, EN_CURSO: 0, FINALIZADO: 0, CANCELADO: 0, BORRADOR: 0 })
   const [clientReady, setClientReady] = useState(false)
 
   useEffect(() => {
@@ -96,32 +79,18 @@ export default function ConcursosClientPage() {
       // Sort by fechaInicio descending (latest first)
       const sortedContests = [...contestsData].sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
       setContests(sortedContests)
-      // compute status counts and default filtered set
-      const now = new Date()
-      const counts: Record<string, number> = { todos: sortedContests.length, proximos: 0, en_curso: 0, finalizados: 0, inscripciones: 0 }
+      // compute status counts from API `status` field and default filtered set
+      const counts: Record<string, number> = { ALL: sortedContests.length, PUBLICADO: 0, INSCRIPCIONES_ABIERTAS: 0, INSCRIPCIONES_CERRADAS: 0, EN_CURSO: 0, FINALIZADO: 0, CANCELADO: 0, BORRADOR: 0 }
       sortedContests.forEach((c) => {
-        const start = new Date(c.fechaInicio)
-        const end = c.fechaFin ? new Date(c.fechaFin) : null
-        if (end && end < now) counts.finalizados++
-        else if (start > now) counts.proximos++
-        else counts.en_curso++
-        if (c.fechaInicioRegistro && c.fechaFinRegistro) {
-          const regStart = new Date(c.fechaInicioRegistro)
-          const regEnd = new Date(c.fechaFinRegistro)
-          if (now >= regStart && now <= regEnd) counts.inscripciones++
-        }
+        const s = (c as any).status || 'PUBLICADO'
+        if (counts[s] !== undefined) counts[s]++
+        else counts[s] = 1
       })
       setStatusCounts(counts)
 
-      // Default view: show both en_curso and finalizados
-      const defaultFiltered = sortedContests.filter((contest) => {
-        const start = new Date(contest.fechaInicio)
-        const end = contest.fechaFin ? new Date(contest.fechaFin) : null
-        const isEnCurso = start <= now && (!end || end >= now)
-        const isFinalizado = end && end < now
-        return isEnCurso || isFinalizado
-      })
-      setFilteredContests(defaultFiltered)
+      // Default view: show all contests (historial)
+      setFilteredContests(sortedContests)
+      setSelectedStatus('ALL')
       setLoading(false)
     }
     fetchContests()
@@ -149,39 +118,28 @@ export default function ConcursosClientPage() {
   const handleFiltersChange = (filters: any) => {
     let filtered = [...contests]
 
-    if (filters.animalType) {
+    // Animal type filter: match any of the contest.tipoGanado array
+    if (filters.animalType && filters.animalType !== 'all') {
       filtered = filtered.filter((contest) =>
-        contest.tipoGanado?.some((tipo) => tipo.toLowerCase().includes(filters.animalType.toLowerCase())),
+        (contest.tipoGanado || []).some((tipo) => tipo.toLowerCase() === filters.animalType.toLowerCase()),
       )
     }
 
-    if (filters.location) {
+    // Location filter
+    if (filters.location && filters.location !== 'all') {
       filtered = filtered.filter((contest) => contest.ubicacion?.toLowerCase().includes(filters.location.toLowerCase()))
     }
 
-    if (filters.status && clientReady) {
-      const now = new Date()
-      filtered = filtered.filter((contest) => {
-        const startDate = new Date(contest.fechaInicio)
-        const endDate = contest.fechaFin ? new Date(contest.fechaFin) : null
+    // Category filter: contest.categorias is an array
+    if (filters.category && filters.category !== 'all') {
+      filtered = filtered.filter((contest) => (contest as any).categorias?.some((c: string) => c === filters.category))
+    }
 
-        switch (filters.status) {
-          case "próximos":
-            return startDate > now
-          case "en curso":
-            return startDate <= now && (!endDate || endDate >= now)
-          case "finalizados":
-            return endDate && endDate < now
-          case "inscripciones abiertas":
-            return (
-              contest.fechaInicioRegistro &&
-              contest.fechaFinRegistro &&
-              now >= new Date(contest.fechaInicioRegistro) &&
-              now <= new Date(contest.fechaFinRegistro)
-            )
-          default:
-            return true
-        }
+    // Status filter (enum) - 'ALL' means no filtering
+    if (clientReady && filters.status && filters.status !== 'ALL') {
+      filtered = filtered.filter((contest) => {
+        const s = (contest as any).status || 'PUBLICADO'
+        return s === filters.status
       })
     }
 
@@ -203,43 +161,37 @@ export default function ConcursosClientPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section - Optimizado para móvil */}
+      {/* Hero Section - versión compacta en móvil */}
       <div className="bg-gradient-to-br from-green-700 via-green-600 to-emerald-600 text-white relative overflow-hidden">
-        {/* Patrón de fondo sutil */}
         <div className="absolute inset-0 bg-black/10"></div>
 
-        <div className="container mx-auto px-4 py-12 sm:py-16 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            {/* Logo centrado */}
-            <div className="flex justify-center mb-6">
-              <Logo className="text-white" size="lg" href={null} />
+        <div className="container mx-auto px-4 py-6 sm:py-10 relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+            {/* Logo pequeño en mobile */}
+            <div className="flex justify-center mb-3">
+              <Logo className="text-white" size="sm" href={null} />
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-2 sm:mb-4 leading-tight">
               Concursos Ganaderos
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 opacity-95 leading-relaxed px-4">
+            <p className="text-sm sm:text-base md:text-lg mb-3 sm:mb-4 opacity-95 leading-relaxed px-2">
               Los mejores concursos ganaderos de Cajamarca y la región norte del Perú
             </p>
 
-            {/* Información específica de Cajamarca */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <Mountain className="h-6 w-6" />
-                <span className="text-lg font-semibold">Cajamarca - 2,750 msnm</span>
-              </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-3 mb-4 sm:mb-6">
               {clientReady && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
                   <div className="flex items-center justify-center gap-2">
-                    <Trophy className="h-5 w-5" />
+                    <Trophy className="h-4 w-4" />
                     <span>{contests.length} Concursos</span>
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <Users className="h-5 w-5" />
+                    <Users className="h-4 w-4" />
                     <span>{contests.reduce((acc, c) => acc + c.participantCount, 0)} Participantes</span>
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                    <Building2 className="h-4 w-4" />
                     <span>{new Set(contests.map((c) => c.company.id)).size} Organizadores</span>
                   </div>
                 </div>
@@ -273,80 +225,14 @@ export default function ConcursosClientPage() {
           </div>
         ) : (
           <div className="space-y-12">
-            {/* Status tabs */}
-            <div className="flex items-center gap-2 flex-wrap mb-4">
-              {[
-                { key: 'default', label: 'Activos + Finalizados', count: statusCounts.en_curso + statusCounts.finalizados },
-                { key: 'todos', label: 'Todos', count: statusCounts.todos },
-                { key: 'proximos', label: 'Próximos', count: statusCounts.proximos },
-                { key: 'en_curso', label: 'En curso', count: statusCounts.en_curso },
-                { key: 'finalizados', label: 'Finalizados', count: statusCounts.finalizados },
-                { key: 'inscripciones', label: 'Inscripciones', count: statusCounts.inscripciones },
-              ].map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => {
-                    setSelectedStatus(s.key)
-                    const now = new Date()
-                    let nextFiltered: Contest[] = [...contests]
-
-                    switch (s.key) {
-                      case 'default':
-                        nextFiltered = contests.filter((contest) => {
-                          const start = new Date(contest.fechaInicio)
-                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
-                          const isEnCurso = start <= now && (!end || end >= now)
-                          const isFinalizado = end && end < now
-                          return isEnCurso || isFinalizado
-                        })
-                        break
-                      case 'todos':
-                        nextFiltered = [...contests]
-                        break
-                      case 'proximos':
-                        nextFiltered = contests.filter((contest) => new Date(contest.fechaInicio) > now)
-                        break
-                      case 'en_curso':
-                        nextFiltered = contests.filter((contest) => {
-                          const start = new Date(contest.fechaInicio)
-                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
-                          return start <= now && (!end || end >= now)
-                        })
-                        break
-                      case 'finalizados':
-                        nextFiltered = contests.filter((contest) => {
-                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
-                          return end && end < now
-                        })
-                        break
-                      case 'inscripciones':
-                        nextFiltered = contests.filter((contest) => {
-                          return (
-                            contest.fechaInicioRegistro &&
-                            contest.fechaFinRegistro &&
-                            now >= new Date(contest.fechaInicioRegistro) &&
-                            now <= new Date(contest.fechaFinRegistro)
-                          )
-                        })
-                        break
-                    }
-
-                    // sort latest first
-                    nextFiltered.sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
-                    setFilteredContests(nextFiltered)
-                  }}
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${selectedStatus === s.key ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  {s.label} <Badge className="ml-2 inline-block">{s.count}</Badge>
-                </button>
-              ))}
-            </div>
+            {/* Status tabs removed: status badges moved inside the filters panel to avoid duplicate controls */}
 
             {/* Filtros */}
             <ContestFilters
               onFiltersChange={handleFiltersChange}
               totalContests={contests.length}
               filteredCount={filteredContests.length}
+              statusCounts={statusCounts}
             />
 
             {/* Concursos Activos */}
@@ -374,7 +260,7 @@ export default function ConcursosClientPage() {
                 <div className="flex items-center gap-3 mb-6 sm:mb-8">
                   <div className="w-1 h-8 bg-gray-400 rounded-full" />
                   <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Concursos Finalizados</h2>
-                  <Badge variant="secondary" className="ml-2 px-3 py-1 text-sm font-bold">
+                  <Badge className="ml-2 px-3 py-1 text-sm font-bold">
                     {finishedContests.length}
                   </Badge>
                 </div>

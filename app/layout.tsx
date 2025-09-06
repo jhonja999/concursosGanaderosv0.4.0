@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { HomeNavbar } from "@/components/shared/HomeNavbar"
 import { SiteFooter } from "@/components/shared/site-footer"
 import { headers } from "next/headers"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -96,6 +97,7 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {!isAdminRoute && <HomeNavbar user={user} />}
           {children}
+           <SpeedInsights />
           {!isAdminRoute && <SiteFooter />}
           <Toaster
             position="top-right"
