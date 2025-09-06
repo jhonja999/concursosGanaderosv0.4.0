@@ -43,22 +43,33 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      switch (status) {
-        case "active":
-          where.isActive = true
-          break
-        case "inactive":
-          where.isActive = false
-          break
-        case "public":
-          where.isPublic = true
-          break
-        case "private":
-          where.isPublic = false
-          break
-        case "featured":
-          where.isFeatured = true
-          break
+      // Accept both friendly status shortcuts (active, public, featured, etc.)
+      // and explicit contest status enum values (BORRADOR, EN_CURSO, FINALIZADO, INSCRIPCIONES_ABIERTAS)
+      const statusUpper = status.toUpperCase()
+      const enumStatuses = ["BORRADOR", "INSCRIPCIONES_ABIERTAS", "EN_CURSO", "FINALIZADO"]
+
+      if (enumStatuses.includes(statusUpper)) {
+        // Filter by exact contest status enum
+        // Prisma typing is relaxed here for simplicity
+        ;(where as any).status = statusUpper
+      } else {
+        switch (status) {
+          case "active":
+            where.isActive = true
+            break
+          case "inactive":
+            where.isActive = false
+            break
+          case "public":
+            where.isPublic = true
+            break
+          case "private":
+            where.isPublic = false
+            break
+          case "featured":
+            where.isFeatured = true
+            break
+        }
       }
     }
 

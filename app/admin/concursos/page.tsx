@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -59,6 +60,7 @@ export default function ConcursosPage() {
   const [filteredContests, setFilteredContests] = useState<Contest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [contestToDelete, setContestToDelete] = useState<Contest | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -67,6 +69,13 @@ export default function ConcursosPage() {
   useEffect(() => {
     fetchContests()
   }, [])
+
+  // Re-fetch when status filter changes
+  useEffect(() => {
+    // If user selects a status, reload from server
+    fetchContests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter])
 
   useEffect(() => {
     const filtered = contests.filter(
@@ -81,13 +90,34 @@ export default function ConcursosPage() {
 
   const fetchContests = async () => {
     try {
-      const response = await fetch("/api/admin/concursos")
-      if (response.ok) {
-        const data = await response.json()
-        setContests(data.contests || [])
-      } else {
-        toast.error("Error al cargar los concursos")
+      // Paginate and aggregate results to include historical contests
+      const pageLimit = 200
+      let page = 1
+      let allContests: Contest[] = []
+
+      while (true) {
+        const params = new URLSearchParams()
+        params.append("limit", pageLimit.toString())
+        params.append("page", page.toString())
+        if (searchTerm) params.append("search", searchTerm)
+        if (statusFilter && statusFilter !== "all") params.append("status", statusFilter)
+
+        const res = await fetch(`/api/admin/concursos?${params.toString()}`, { credentials: "include" })
+        if (!res.ok) {
+          toast.error("Error al cargar los concursos")
+          break
+        }
+
+        const data = await res.json()
+        const pageContests: Contest[] = data.contests || []
+        allContests = allContests.concat(pageContests)
+
+        const pages = data.pagination?.pages || 1
+        if (page >= pages) break
+        page += 1
       }
+
+      setContests(allContests)
     } catch (error) {
       console.error("Error fetching contests:", error)
       toast.error("Error al cargar los concursos")
@@ -103,6 +133,7 @@ export default function ConcursosPage() {
     try {
       const response = await fetch(`/api/admin/concursos/${contestToDelete.id}`, {
         method: "DELETE",
+        credentials: "include",
       })
 
       if (response.ok) {
@@ -186,10 +217,30 @@ export default function ConcursosPage() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
-              <Search className="h-4 w-4 mr-2" />
-              Buscar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
+                <SelectTrigger className="h-12 w-56">
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="active">Activos</SelectItem>
+                  <SelectItem value="inactive">Inactivos</SelectItem>
+                  <SelectItem value="public">Públicos</SelectItem>
+                  <SelectItem value="private">Privados</SelectItem>
+                  <SelectItem value="featured">Destacados</SelectItem>
+                  <SelectItem value="EN_CURSO">En curso</SelectItem>
+                  <SelectItem value="FINALIZADO">Finalizados</SelectItem>
+                  <SelectItem value="INSCRIPCIONES_ABIERTAS">Inscripciones abiertas</SelectItem>
+                  <SelectItem value="BORRADOR">Borrador</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" onClick={() => fetchContests()}>
+                <Search className="h-4 w-4 mr-2" />
+                Buscar
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

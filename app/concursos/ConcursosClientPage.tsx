@@ -63,6 +63,8 @@ export default function ConcursosClientPage() {
   const [loading, setLoading] = useState(true)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
   const [finishedContests, setFinishedContests] = useState<Contest[]>([])
+  const [selectedStatus, setSelectedStatus] = useState<string>("default") // 'default' => show en_curso + finalizados
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({ todos: 0, proximos: 0, en_curso: 0, finalizados: 0, inscripciones: 0 })
   const [clientReady, setClientReady] = useState(false)
 
   useEffect(() => {
@@ -75,7 +77,32 @@ export default function ConcursosClientPage() {
       // Sort by fechaInicio descending (latest first)
       const sortedContests = [...contestsData].sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
       setContests(sortedContests)
-      setFilteredContests(sortedContests)
+      // compute status counts and default filtered set
+      const now = new Date()
+      const counts: Record<string, number> = { todos: sortedContests.length, proximos: 0, en_curso: 0, finalizados: 0, inscripciones: 0 }
+      sortedContests.forEach((c) => {
+        const start = new Date(c.fechaInicio)
+        const end = c.fechaFin ? new Date(c.fechaFin) : null
+        if (end && end < now) counts.finalizados++
+        else if (start > now) counts.proximos++
+        else counts.en_curso++
+        if (c.fechaInicioRegistro && c.fechaFinRegistro) {
+          const regStart = new Date(c.fechaInicioRegistro)
+          const regEnd = new Date(c.fechaFinRegistro)
+          if (now >= regStart && now <= regEnd) counts.inscripciones++
+        }
+      })
+      setStatusCounts(counts)
+
+      // Default view: show both en_curso and finalizados
+      const defaultFiltered = sortedContests.filter((contest) => {
+        const start = new Date(contest.fechaInicio)
+        const end = contest.fechaFin ? new Date(contest.fechaFin) : null
+        const isEnCurso = start <= now && (!end || end >= now)
+        const isFinalizado = end && end < now
+        return isEnCurso || isFinalizado
+      })
+      setFilteredContests(defaultFiltered)
       setLoading(false)
     }
     fetchContests()
@@ -227,6 +254,75 @@ export default function ConcursosClientPage() {
           </div>
         ) : (
           <div className="space-y-12">
+            {/* Status tabs */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {[
+                { key: 'default', label: 'Activos + Finalizados', count: statusCounts.en_curso + statusCounts.finalizados },
+                { key: 'todos', label: 'Todos', count: statusCounts.todos },
+                { key: 'proximos', label: 'Próximos', count: statusCounts.proximos },
+                { key: 'en_curso', label: 'En curso', count: statusCounts.en_curso },
+                { key: 'finalizados', label: 'Finalizados', count: statusCounts.finalizados },
+                { key: 'inscripciones', label: 'Inscripciones', count: statusCounts.inscripciones },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => {
+                    setSelectedStatus(s.key)
+                    const now = new Date()
+                    let nextFiltered: Contest[] = [...contests]
+
+                    switch (s.key) {
+                      case 'default':
+                        nextFiltered = contests.filter((contest) => {
+                          const start = new Date(contest.fechaInicio)
+                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
+                          const isEnCurso = start <= now && (!end || end >= now)
+                          const isFinalizado = end && end < now
+                          return isEnCurso || isFinalizado
+                        })
+                        break
+                      case 'todos':
+                        nextFiltered = [...contests]
+                        break
+                      case 'proximos':
+                        nextFiltered = contests.filter((contest) => new Date(contest.fechaInicio) > now)
+                        break
+                      case 'en_curso':
+                        nextFiltered = contests.filter((contest) => {
+                          const start = new Date(contest.fechaInicio)
+                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
+                          return start <= now && (!end || end >= now)
+                        })
+                        break
+                      case 'finalizados':
+                        nextFiltered = contests.filter((contest) => {
+                          const end = contest.fechaFin ? new Date(contest.fechaFin) : null
+                          return end && end < now
+                        })
+                        break
+                      case 'inscripciones':
+                        nextFiltered = contests.filter((contest) => {
+                          return (
+                            contest.fechaInicioRegistro &&
+                            contest.fechaFinRegistro &&
+                            now >= new Date(contest.fechaInicioRegistro) &&
+                            now <= new Date(contest.fechaFinRegistro)
+                          )
+                        })
+                        break
+                    }
+
+                    // sort latest first
+                    nextFiltered.sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
+                    setFilteredContests(nextFiltered)
+                  }}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${selectedStatus === s.key ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                >
+                  {s.label} <Badge className="ml-2 inline-block">{s.count}</Badge>
+                </button>
+              ))}
+            </div>
+
             {/* Filtros */}
             <ContestFilters
               onFiltersChange={handleFiltersChange}

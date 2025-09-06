@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    // Get all active contests with company data
+    // Get all public contests (exclude drafts) with company data
     const contests = await prisma.contest.findMany({
       where: {
-        isActive: true,
+        status: { not: "BORRADOR" },
       },
       include: {
         company: {

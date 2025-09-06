@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
             status: true,
             tipoPuntaje: true,
             tipoGanado: true,
+            // NUEVO: incluir imagen y descripción del concurso
+            imagenPrincipal: true,
+            descripcion: true,
           },
         },
         contestCategory: {
@@ -162,6 +165,9 @@ export async function GET(request: NextRequest) {
         contestId: ganado.contest?.id || "",
         contestDate: ganado.contest?.fechaInicio ? ganado.contest.fechaInicio.toISOString() : new Date().toISOString(),
         contestStatus: ganado.contest?.status || "BORRADOR",
+        // NUEVO: incluir imagen y descripción del concurso
+        contestImage: ganado.contest?.imagenPrincipal || null,
+        contestDescription: ganado.contest?.descripcion || null,
         category: ganado.contestCategory?.nombre || "Sin categoría",
         imageUrl: ganado.imagenUrl || null,
         isChampion: ganado.posicion === 1 || ganado.isGanador || false,
@@ -187,6 +193,9 @@ export async function GET(request: NextRequest) {
               name: winner.contestName,
               date: winner.contestDate,
               status: winner.contestStatus,
+              // NUEVO: incluir imagen y descripción del concurso
+              imagenPrincipal: winner.contestImage,
+              descripcion: winner.contestDescription,
             },
             winners: [],
           }
@@ -227,6 +236,9 @@ export async function GET(request: NextRequest) {
               nombre: g.contest.nombre,
               status: g.contest.status,
               fechaInicio: g.contest.fechaInicio,
+              // NUEVO: incluir imagen y descripción del concurso
+              imagenPrincipal: g.contest.imagenPrincipal,
+              descripcion: g.contest.descripcion,
             },
           ]),
       ).values(),
