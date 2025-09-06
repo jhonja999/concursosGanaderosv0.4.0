@@ -49,8 +49,27 @@ async function getContests(): Promise<Contest[]> {
       return []
     }
 
-    const data = await response.json()
-    return data.contests || []
+    // Parse response safely and log for debugging
+    let data: any
+    try {
+      data = await response.json()
+    } catch (err) {
+      const text = await response.text()
+      console.warn('Could not parse JSON from /api/concursos, raw text:', text)
+      return []
+    }
+
+    console.debug('Fetched /api/concursos ->', data)
+
+    // Support different response shapes for robustness
+    if (Array.isArray(data)) return data
+    if (data && Array.isArray(data.contests)) return data.contests
+    if (data && data.success && data.contests === undefined) {
+      console.warn('/api/concursos returned success but no contests field', data)
+      return []
+    }
+
+    return []
   } catch (error) {
     console.error("Error fetching contests:", error)
     return []
